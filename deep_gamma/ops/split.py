@@ -52,7 +52,12 @@ def scaffold_groups(mols: List[str]):
             description="List of columns that should be used for generating scaffolds",
         )
     ),
-    out=dict(df_with_scaffolds=Out(pd.DataFrame), scaffolds=Out(Dict[str, int])),
+    out=dict(
+        df_with_scaffolds=Out(
+            pd.DataFrame, io_manager_key="intermediate_parquet_io_manager"
+        ),
+        scaffolds=Out(Dict[str, int]),
+    ),
 )
 def get_scaffolds(context, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, int]]:
     """Get the scaffolds for all the unique molecules in in `scaffold_columns`"""
@@ -76,7 +81,7 @@ def get_scaffolds(context, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, in
 @op(
     config_schema=dict(
         test_size=Field(float, description="Size of the test set"),
-        valid_size=Field(float, description="Size of the validation set. "),
+        valid_size=Field(float, description="Size of the validation set."),
     ),
     out=dict(
         train_indices=Out(np.ndarray),

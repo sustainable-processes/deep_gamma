@@ -13,7 +13,9 @@ from pathlib import Path
 
 @op
 def read_data() -> pd.DataFrame:
-    return pd.read_parquet(DATA_PATH / "03_primary" / "cosmo_gammas_resolved.parquet")
+    return pd.read_parquet(
+        DATA_PATH / "02_intermediate" / "cosmo_gammas_resolved.parquet"
+    )
 
 
 @op
@@ -56,6 +58,7 @@ def scaffold_split_data():
 
 if __name__ == "__main__":
     import warnings
+    from deep_gamma.resources import parquet_io_manager
 
     warnings.filterwarnings("ignore", category=ExperimentalWarning)
     # resolve_data.execute_in_process(
@@ -76,8 +79,13 @@ if __name__ == "__main__":
     #     config={"scaffold_split": {"config": dict(test_size=0.1)}}
     # )
     scaffold_split_data.execute_in_process(
+        resources={
+            "intermediate_parquet_io_manager": parquet_io_manager.configured(
+                {"base_path": str(DATA_PATH / "02_intermediate")}
+            )
+        },
         config={
             "get_scaffolds": {"config": dict(scaffold_columns=["smiles_1"])},
             "scaffold_split": {"config": dict(test_size=0.1, valid_size=0.05)},
-        }
+        },
     )
