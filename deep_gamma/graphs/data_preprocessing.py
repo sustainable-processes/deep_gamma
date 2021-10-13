@@ -5,6 +5,7 @@ from deep_gamma.ops import (
     scaffold_split,
     visualize_scaffolds,
 )
+from deep_gamma.resources import parquet_io_manager, pil_io_manager
 from deep_gamma import DATA_PATH
 import pandas as pd
 from typing import Union
@@ -30,12 +31,18 @@ def write_to_parquet(context, df: pd.DataFrame):
 
 @graph
 def resolve_data():
+    """Resolve data to find all the SMILES strings"""
+    # Read in data
     df = read_data()
     molecule_list_df = read_molecule_list_df()
+
+    # Resolve SMILES
     resolved_df = resolve_smiles(
         df,
         molecule_list_df,
     )
+
+    # Resolve SMILES
     write_to_parquet(resolved_df)
 
 
@@ -51,14 +58,16 @@ def scaffold_split_data():
     train_indices, valid_indices, test_indices = scaffold_split(df, scaffolds)
 
     # Visualize scaffolds
-    train_img = visualize_scaffolds(df, scaffolds, train_indices)
-    valid_img = visualize_scaffolds(df, scaffolds, valid_indices)
-    test_img = visualize_scaffolds(df, scaffolds, test_indices)
+    vs_train = visualize_scaffolds.alias("visualize_scaffolds_train")
+    vs_valid = visualize_scaffolds.alias("visualize_scaffolds_valid")
+    vs_test = visualize_scaffolds.alias("visualize_scaffolds_test")
+    vs_train(df, scaffolds, train_indices)
+    vs_valid(df, scaffolds, valid_indices)
+    vs_test(df, scaffolds, test_indices)
 
 
 if __name__ == "__main__":
     import warnings
-    from deep_gamma.resources import parquet_io_manager
 
     warnings.filterwarnings("ignore", category=ExperimentalWarning)
     # resolve_data.execute_in_process(
@@ -78,14 +87,29 @@ if __name__ == "__main__":
     # split_data.execute_in_process(
     #     config={"scaffold_split": {"config": dict(test_size=0.1)}}
     # )
-    scaffold_split_data.execute_in_process(
-        resources={
+    job = scaffold_split_data.to_job(
+        resource_defs={
             "intermediate_parquet_io_manager": parquet_io_manager.configured(
                 {"base_path": str(DATA_PATH / "02_intermediate")}
-            )
+            ),
+            "reporting_pil_io_manager": pil_io_manager.configured(
+                {"base_path": str(DATA_PATH / "08_reporting")}
+            ),
         },
         config={
-            "get_scaffolds": {"config": dict(scaffold_columns=["smiles_1"])},
-            "scaffold_split": {"config": dict(test_size=0.1, valid_size=0.05)},
+            "ops": {
+                "get_scaffolds": {"config": dict(scaffold_columns=["smiles_1"])},
+                "scaffold_split": {"config": dict(test_size=0.1, valid_size=0.05)},
+                "visualize_scaffolds_train": {
+                    "outputs": {"result": {"filename": "train_scaffolds.png"}}
+                },
+                "visualize_scaffolds_valid": {
+                    "outputs": {"result": {"filename": "valid_scaffolds.png"}}
+                },
+                "visualize_scaffolds_test": {
+                    "outputs": {"result": {"filename": "test_scaffolds.png"}}
+                },
+            }
         },
     )
+    job.execute_in_process()

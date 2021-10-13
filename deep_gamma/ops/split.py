@@ -1,6 +1,5 @@
 from ast import For
 from dagster import op, Out, Field, Output, Array
-from itsdangerous import NoneAlgorithm
 from deep_gamma import RecursiveNamespace
 
 from chemprop.data import generate_scaffold
@@ -11,7 +10,7 @@ from sklearn.model_selection import GroupShuffleSplit, train_test_split
 import pandas as pd
 import numpy as np
 
-from PIL import Image
+from PIL.Image import Image
 from tqdm.auto import tqdm
 import logging
 from typing import List, Tuple, Any, Dict
@@ -124,10 +123,10 @@ def scaffold_split(
     return train_indices, valid_indices, test_indices
 
 
-@op
+@op(out=Out(io_manager_key="reporting_pil_io_manager"))
 def visualize_scaffolds(
     df: pd.DataFrame, scaffolds: dict, selection_indices: np.ndarray = None
-):
+) -> Image:
     """Visualize scaffolds with counts of scaffolds below each molecule"""
     if selection_indices is not None:
         df = df.iloc[selection_indices]
