@@ -1,4 +1,4 @@
-from dagster import op, graph, GraphOut, InputDefinition, ExperimentalWarning
+from dagster import op, graph, GraphOut, InputDefinition, Out, ExperimentalWarning
 from deep_gamma.ops import (
     lookup_smiles,
     resolve_smiles,
@@ -7,6 +7,7 @@ from deep_gamma.ops import (
     visualize_scaffolds,
     plot_scaffold_counts,
     find_clusters,
+    plot_cluster_counts,
 )
 from deep_gamma.resources import (
     parquet_io_manager,
@@ -21,28 +22,7 @@ from typing import Union
 from pathlib import Path
 
 
-@op
-def read_data() -> pd.DataFrame:
-    return pd.read_parquet(
-        DATA_PATH / "02_intermediate" / "cosmo_gammas_resolved.parquet"
-    )
-
-
-@op
-def read_molecule_list_df() -> pd.DataFrame:
-    return pd.read_csv(DATA_PATH / "03_primary" / "resolved_molecule_list.csv")
-
-
-@op
-def write_to_parquet(context, df: pd.DataFrame):
-    df.to_parquet(DATA_PATH / "03_primary" / "cosmo_gammas_resolved.parquet")
-
-
 @graph(
-    # input_defs=[
-    #     InputDefinition("molecule_list_df", root_manager_key="molecule_list_loader"),
-    #     InputDefinition("data", root_manager_key="gamma_data_loader"),
-    # ],
     out=dict(molecule_list_df=GraphOut(), data=GraphOut()),
 )
 def resolve_data():
@@ -78,13 +58,29 @@ def scaffold_split_data(df: pd.DataFrame):
 @graph
 def cluster_split_data(molecule_list_df: pd.DataFrame):
     # Cluster data using molecule list
-    clusters = find_clusters(molecule_list_df)
+    clusters_df = find_clusters(molecule_list_df)
 
     # Split data by clusters
     # split_data()
 
     # Visualize clusters
-    # visualize_clusters(0)
+    plot_cluster_counts(clusters_df)
+
+
+@op(out={"molecule_list_with_smiles": Out(), "data": Out()})
+def dev_read_data():
+    data = pd.read_parquet(DATA_PATH / "02_intermediate" / "data_with_smiles.pq")
+    molecule_list_df = pd.read_parquet(
+        DATA_PATH / "02_intermediate" / "molecule_list_with_smiles.pq"
+    )
+    return molecule_list_df, data
+
+
+@graph
+def cluster_split_data_dev():
+    molecule_list_df, data = dev_read_data()
+
+    cluster_split_data(molecule_list_df)
 
 
 @graph
@@ -93,18 +89,74 @@ def data_preprocessing():
     cluster_split_data(molecule_list_df)
 
 
-dp_job = data_preprocessing.to_job(
+# dp_job = data_preprocessing.to_job(
+#     resource_defs={
+#         "molecule_list_loader": csv_loader.configured(
+#             {"path": str(DATA_PATH / "01_raw" / "molecule_list.csv")}
+#         ),
+#         "gamma_data_loader": parquet_loader.configured(
+#             {
+#                 "path": str(
+#                     DATA_PATH / "02_intermediate" / "concatenated_cosmo_gammas.pq"
+#                 )
+#             }
+#         ),
+#         "intermediate_parquet_io_manager": parquet_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "02_intermediate")}
+#         ),
+#         "reporting_pil_io_manager": pil_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "08_reporting")}
+#         ),
+#         "reporting_mpl_io_manager": mpl_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "08_reporting")}
+#         ),
+#     },
+#     config={
+#         "ops": {
+#             "resolve_data": {
+#                 "ops": {
+#                     "resolve_smiles": {
+#                         "config": dict(
+#                             input_column_prefix="cas_number",
+#                             smiles_column_prefix="smiles",
+#                             molecule_df_input_column="cas_number",
+#                             molecule_df_smiles_column="smiles",
+#                             lookup_failed_smiles_as_name=True,
+#                             molecule_list_df_name_column="cosmo_name",
+#                         ),
+#                     },
+#                     "lookup_smiles": {
+#                         "config": dict(
+#                             input_column="cas_number", smiles_column="smiles"
+#                         )
+#                     },
+#                 },
+#             },
+#             "cluster_split_data": {
+#                 "ops": {
+#                     "find_clusters": {
+#                         "config": dict(
+#                             smiles_column="smiles",
+#                             cutoff=0.8,
+#                             cluster_column="cluster",
+#                             min_cluster_size=10,
+#                         )
+#                     },
+#                     "plot_cluster_counts": {
+#                         "config": dict(cluster_column="cluster"),
+#                         "outputs": {
+#                             "result": {"filename": "cluster_counts.png", "dpi": 300}
+#                         },
+#                     },
+#                 }
+#             },
+#         }
+#     },
+# )
+
+
+csplit_job = cluster_split_data_dev.to_job(
     resource_defs={
-        "molecule_list_loader": csv_loader.configured(
-            {"path": str(DATA_PATH / "01_raw" / "molecule_list.csv")}
-        ),
-        "gamma_data_loader": parquet_loader.configured(
-            {
-                "path": str(
-                    DATA_PATH / "02_intermediate" / "concatenated_cosmo_gammas.pq"
-                )
-            }
-        ),
         "intermediate_parquet_io_manager": parquet_io_manager.configured(
             {"base_path": str(DATA_PATH / "02_intermediate")}
         ),
@@ -117,25 +169,6 @@ dp_job = data_preprocessing.to_job(
     },
     config={
         "ops": {
-            "resolve_data": {
-                "ops": {
-                    "resolve_smiles": {
-                        "config": dict(
-                            input_column_prefix="cas_number",
-                            smiles_column_prefix="smiles",
-                            molecule_df_input_column="cas_number",
-                            molecule_df_smiles_column="smiles",
-                            lookup_failed_smiles_as_name=True,
-                            molecule_list_df_name_column="cosmo_name",
-                        ),
-                    },
-                    "lookup_smiles": {
-                        "config": dict(
-                            input_column="cas_number", smiles_column="smiles"
-                        )
-                    },
-                },
-            },
             "cluster_split_data": {
                 "ops": {
                     "find_clusters": {
@@ -143,46 +176,56 @@ dp_job = data_preprocessing.to_job(
                             smiles_column="smiles",
                             cutoff=0.8,
                             cluster_column="cluster",
+                            min_cluster_size=10,
                         )
-                    }
+                    },
+                    "plot_cluster_counts": {
+                        "config": dict(cluster_column="cluster"),
+                        "outputs": {
+                            "result": {"filename": "cluster_counts.png", "dpi": 300}
+                        },
+                    },
                 }
             },
         }
     },
 )
 
+# def count_cluster(cutoff):
+#     dists = []
+#     nfps = len(fps)
+#     for i in range(1, nfps):
+#         sims = DataStructs.BulkTanimotoSimilarity(fps[i], fps[:i])
+#         dists.extend([1 - x for x in sims])
+#     scaffold_sets = Butina.ClusterData(dists, nfps, cutoff, isDistData=True)
+#     scaffold_sets = sorted(scaffold_sets, key=lambda x: -len(x))
+#     scaffold_counts = [len(scaffold_set) for scaffold_set in scaffold_sets]
+#     scaffold_counts = np.array(scaffold_counts)
+#     frac_single_clusters = len(scaffold_counts[scaffold_counts < 2]) / len(
+#         scaffold_counts
+#     )
+#     avg_cluster_size = np.mean(scaffold_counts)
+#     std_cluster_size = np.std(scaffold_counts)
+#     return frac_single_clusters, avg_cluster_size, std_cluster_size
 
-# dp_job = data_preprocessing.to_job(
-#     resource_defs={
-#         "intermediate_parquet_io_manager": parquet_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "02_intermediate")}
-#         ),
-#         "reporting_pil_io_manager": pil_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "08_reporting")}
-#         ),
-#         "reporting_mpl_io_manager": mpl_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "08_reporting")}
-#         ),
-#     },
-#     # config={
-#     #     "ops": {
-#     #         {
-#     #             "resolve_smiles": {
-#     #                 "config": dict(
-#     #                     input_column_prefix="cas_number",
-#     #                     smiles_column_prefix="smiles",
-#     #                     molecule_df_input_column="cas_number",
-#     #                     molecule_df_smiles_column="smiles",
-#     #                     lookup_failed_smiles_as_name=True,
-#     #                     molecule_list_df_name_column="cosmo_name",
-#     #                 )
-#     #             },
-#     #             "find_clusters": {
-#     #                 "config": dict(
-#     #                     smiles_column="smiles", cutoff=0.8, cluster_column="cluster"
-#     #                 )
-#     #             },
-#     #         }
-#     #     }
-#     # },
+
+# res = [count_cluster(0.1 * cutoff) for cutoff in range(10)]
+# frac_single_clusters = [r[0] for r in res]
+# avg_cluster_sizes = [r[1] for r in res]
+# std_cluster_sizes = [r[2] for r in res]
+# fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+# fig.subplots_adjust(wspace=0.5)
+# axes[0].scatter(np.arange(10) * 0.1, np.array(frac_single_clusters) * 100)
+# axes[0].set_xlabel("Cutoff")
+# axes[0].set_ylabel("Percentage of clusters with 1 molecule (%)")
+# axes[1].errorbar(
+#     np.arange(10) * 0.1,
+#     np.array(avg_cluster_sizes),
+#     yerr=std_cluster_sizes,
+#     fmt="^",
+#     linewidth=0,
+#     elinewidth=1.0,
 # )
+# axes[1].set_xlabel("Cutoff")
+# axes[1].set_ylabel("Average cluster size")
+# fig.savefig("data/08_reporting/clustering_analysis.png", dpi=300)

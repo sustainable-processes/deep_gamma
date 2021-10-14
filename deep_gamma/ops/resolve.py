@@ -12,8 +12,10 @@ from deep_gamma import RecursiveNamespace
 
 
 @op(
-    ins={"data": In(root_manager_key="molecule_list_loader")},
-    out=Out(io_manager_key="intermediate_parquet_io_manager"),
+    ins=dict(data=In(root_manager_key="molecule_list_loader")),
+    out=dict(
+        molecule_list_with_smiles=Out(io_manager_key="intermediate_parquet_io_manager")
+    ),
     config_schema=dict(
         input_column=Field(
             str, description="The name column with strings to be resolved to SMILES"
@@ -63,8 +65,8 @@ def lookup_smiles(
 
 
 @op(
-    ins={"df": In(root_manager_key="gamma_data_loader")},
-    out=Out(io_manager_key="intermediate_parquet_io_manager"),
+    ins=dict(df=In(root_manager_key="gamma_data_loader")),
+    out=dict(data_with_smiles=Out(io_manager_key="intermediate_parquet_io_manager")),
     config_schema=dict(
         input_column_prefix=Field(str, description="Merge column prefix for df"),
         smiles_column_prefix=Field(str, description="Prefix for smiles columns in df"),
@@ -103,9 +105,6 @@ def resolve_smiles(
         drop_columns.remove(config.molecule_list_df_name_column)
     molecule_list_df = molecule_list_df.drop(drop_columns, axis=1)
 
-    from dagster.utils.forked_pdb import ForkedPdb
-
-    ForkedPdb().set_trace()
     # Do the merge
     for i in [1, 2]:
         new_df = pd.merge(

@@ -5,4 +5,5 @@ from .split import (
     visualize_scaffolds,
     plot_scaffold_counts,
     find_clusters,
+    plot_cluster_counts,
 )

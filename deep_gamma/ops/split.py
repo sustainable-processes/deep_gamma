@@ -1,4 +1,5 @@
 from ast import For
+from cgitb import small
 from dagster import op, Out, Field, Output, Array
 from deep_gamma import RecursiveNamespace
 
@@ -30,11 +31,19 @@ from tqdm.auto import tqdm
             float,
             description="The cutoff value for tanimoto similarity.  Molecules that are more similar than this will tend to be put in the same dataset.",
         ),
+        min_cluster_size=Field(
+            int,
+            description="Minimimum size of clusters. Any clusters smaller than this size are combined with the smallest cluster above the minimum cluster size.",
+        ),
         cluster_column=Field(
             str, description="Name of the column to create with the clusters"
         ),
     ),
-    out=Out(io_manager_key="intermediate_parquet_io_manager"),
+    out=dict(
+        molecule_list_with_clusters=Out(
+            io_manager_key="intermediate_parquet_io_manager"
+        )
+    ),
 )
 def find_clusters(context, df: pd.DataFrame) -> pd.DataFrame:
     """Find clusters using the Butina algorithm"""
@@ -58,6 +67,35 @@ def find_clusters(context, df: pd.DataFrame) -> pd.DataFrame:
     # Calculate clusters
     clusters = Butina.ClusterData(dists, nfps, config.cutoff, isDistData=True)
     clusters = sorted(clusters, key=lambda x: -len(x))
+    cluster_counts = pd.Series([len(cluster) for cluster in clusters])
+
+    # Make sure there are clusters above min_cluster_size
+    if (cluster_counts < config.min_cluster_size).all():
+        raise ValueError(
+            f"All clusters are less than minimum cluster size {config.min_cluster_size}. Consider increasing cutoff to make clusters bigger."
+        )
+    # Combine small clusters
+    elif (cluster_counts < config.min_cluster_size).any():
+        # Identify the clusters smaller than the minimum size
+        small_cluster_counts = cluster_counts[cluster_counts < config.min_cluster_size]
+
+        for i in small_cluster_counts.index:
+            # Find the smallest cluster bigger than the minimum size (receiving cluster)
+            receiving_cluster_index = (
+                cluster_counts[cluster_counts > config.min_cluster_size]
+                .sort_values(ascending=True)
+                .index[0]
+            )
+
+            # Add the small cluster to the receiving cluster identified above
+            clusters[receiving_cluster_index] = set(
+                list(clusters[receiving_cluster_index]) + list(clusters[i])
+            )
+
+            # Make the small cluster a null cluster
+            clusters[i] = set()
+        # Remove null clusters
+        clusters = [cluster for cluster in clusters if len(cluster) != 0]
 
     # Add clusters to DataFrame
     df[config.cluster_column] = 0
@@ -65,6 +103,37 @@ def find_clusters(context, df: pd.DataFrame) -> pd.DataFrame:
         df.at[list(cluster), config.cluster_column] = i
 
     return df
+
+
+@op(
+    config_schema=dict(
+        cluster_column=Field(str, description="Name of the column with the clusters"),
+        log_scale=Field(
+            bool, description="Whether the yscale should be in log", default_value=False
+        ),
+    ),
+    out=Out(io_manager_key="reporting_mpl_io_manager"),
+)
+def plot_cluster_counts(context, df: pd.DataFrame):
+    """Bar plot of scaffold frequency"""
+    fig, ax = plt.subplots(1)
+    df[context.solid_config["cluster_column"]].value_counts().plot.bar(ax=ax)
+    ax.set_xlabel("Clusters")
+    ax.set_ylabel("Counts")
+    if context.solid_config["log_scale"]:
+        ax.set_yscale("log")
+    ax.set_xticklabels([])
+    return fig
+
+
+# @op
+# def merge_clusters(context, data: pd.Dataframe, cluster_df: pd.DataFrame)-> pd.DataFrame:
+#     for
+#     return data.merge(cluster_df, left_on="")
+
+
+def cluster_split(data: pd.DataFrame) -> pd.DataFrame:
+    pass
 
 
 def scaffold_groups(mols: List[str]):
