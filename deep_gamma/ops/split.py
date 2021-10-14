@@ -3,18 +3,68 @@ from dagster import op, Out, Field, Output, Array
 from deep_gamma import RecursiveNamespace
 
 from chemprop.data import generate_scaffold
-from rdkit import Chem
+from rdkit import Chem, DataStructs
+from rdkit.Chem import AllChem
+from rdkit.ML.Cluster import Butina
 
 
 from sklearn.model_selection import GroupShuffleSplit, train_test_split
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 from PIL.Image import Image
 from tqdm.auto import tqdm
 import logging
 from typing import List, Tuple, Any, Dict
 from tqdm.auto import tqdm
+
+
+@op(
+    config_schema=dict(
+        smiles_column=Field(
+            str,
+            description="Column containing SMILES strings to use for forming clusters",
+        ),
+        cutoff=Field(
+            float,
+            description="The cutoff value for tanimoto similarity.  Molecules that are more similar than this will tend to be put in the same dataset.",
+        ),
+        cluster_column=Field(
+            str, description="Name of the column to create with the clusters"
+        ),
+    ),
+    out=Out(io_manager_key="intermediate_parquet_io_manager"),
+)
+def find_clusters(context, df: pd.DataFrame) -> pd.DataFrame:
+    """Find clusters using the Butina algorithm"""
+    config = RecursiveNamespace(**context.solid_config)
+    # Create fingerprints
+    mols = []
+    for smiles in df[config.smiles_column]:
+        try:
+            mols.append(Chem.MolFromSmiles(smiles))
+        except TypeError:
+            context.log.error(f"Could not convert {smiles} to RDKit molecule")
+    fps = [AllChem.GetMorganFingerprintAsBitVect(x, 2, 1024) for x in mols]
+
+    # Calculate distances
+    dists = []
+    nfps = len(fps)
+    for i in range(1, nfps):
+        sims = DataStructs.BulkTanimotoSimilarity(fps[i], fps[:i])
+        dists.extend([1 - x for x in sims])
+
+    # Calculate clusters
+    clusters = Butina.ClusterData(dists, nfps, config.cutoff, isDistData=True)
+    clusters = sorted(clusters, key=lambda x: -len(x))
+
+    # Add clusters to DataFrame
+    df[config.cluster_column] = 0
+    for i, cluster in enumerate(clusters):
+        df.at[list(cluster), config.cluster_column] = i
+
+    return df
 
 
 def scaffold_groups(mols: List[str]):
@@ -149,3 +199,15 @@ def visualize_scaffolds(
         returnPNG=False,
     )
     return img
+
+
+@op(out=Out(io_manager_key="reporting_mpl_io_manager"))
+def plot_scaffold_counts(df: pd.DataFrame):
+    """Bar plot of scaffold frequency"""
+    fig, ax = plt.subplots(1)
+    df["scaffold_index"].value_counts().plot.bar(ax=ax)
+    ax.set_xlabel("Scaffolds")
+    ax.set_ylabel("Counts")
+    ax.set_yscale("log")
+    ax.set_xticklabels([])
+    return fig

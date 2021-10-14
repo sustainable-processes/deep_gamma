@@ -2,23 +2,27 @@
 Resolve molecules in any representation to SMILES strings that can be read by chemprop.
 
 """
+from ast import For
+from numpy import insert
 import pandas as pd
 import cirpy
 from tqdm.auto import tqdm
-from dagster import op, In, Field
+from dagster import op, In, Out, Field
 from deep_gamma import RecursiveNamespace
 
 
 @op(
+    ins={"data": In(root_manager_key="molecule_list_loader")},
+    out=Out(io_manager_key="intermediate_parquet_io_manager"),
     config_schema=dict(
-        input_colum=Field(
+        input_column=Field(
             str, description="The name column with strings to be resolved to SMILES"
         ),
         smiles_column=Field(
             str,
             description="""The name of the created SMILES column. Defaults to "smiles". """,
         ),
-    )
+    ),
 )
 def lookup_smiles(
     context,
@@ -28,7 +32,7 @@ def lookup_smiles(
 
     The idea is that you have a list of all the unique molecules
     from the data generation step, and you use that generate
-    the SMILES stirngs which can be merged with the generated data
+    the SMILES strings which can be merged with the generated data
     using the `resolve_smiles` function.
 
     Notes
@@ -59,6 +63,8 @@ def lookup_smiles(
 
 
 @op(
+    ins={"df": In(root_manager_key="gamma_data_loader")},
+    out=Out(io_manager_key="intermediate_parquet_io_manager"),
     config_schema=dict(
         input_column_prefix=Field(str, description="Merge column prefix for df"),
         smiles_column_prefix=Field(str, description="Prefix for smiles columns in df"),
@@ -75,7 +81,7 @@ def lookup_smiles(
         molecule_list_df_name_column=Field(
             str, "The name of the name column molecule_list_df"
         ),
-    )
+    ),
 )
 def resolve_smiles(
     context,
@@ -97,6 +103,9 @@ def resolve_smiles(
         drop_columns.remove(config.molecule_list_df_name_column)
     molecule_list_df = molecule_list_df.drop(drop_columns, axis=1)
 
+    from dagster.utils.forked_pdb import ForkedPdb
+
+    ForkedPdb().set_trace()
     # Do the merge
     for i in [1, 2]:
         new_df = pd.merge(
@@ -110,7 +119,7 @@ def resolve_smiles(
             columns={
                 config.molecule_df_smiles_column: f"{config.smiles_column_prefix}_{i}"
             }
-        )
+        ).drop(config.molecule_df_input_column, axis=1)
 
         # Deal with outputs where the COSMO name was used in place
         # of the CAS number
@@ -128,12 +137,16 @@ def resolve_smiles(
                 .drop("index", axis=1)
                 .reset_index()
             )
-            smiles_names = pd.merge(
-                names,
-                molecule_list_df,
-                left_on=f"{config.input_column_prefix}_{i}",
-                right_on=config.molecule_list_df_name_column,
-            ).set_index("index")
+            smiles_names = (
+                pd.merge(
+                    names,
+                    molecule_list_df,
+                    left_on=f"{config.input_column_prefix}_{i}",
+                    right_on=config.molecule_list_df_name_column,
+                )
+                .set_index("index")
+                .drop(config.molecule_list_df_name_column, axis=1)
+            )
             smiles_names = smiles_names[[config.molecule_df_smiles_column]].rename(
                 columns={
                     config.molecule_df_smiles_column: f"{config.smiles_column_prefix}_{i}"

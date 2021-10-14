@@ -36,6 +36,8 @@ pyarrow = "^5.0.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.9b0"
+ipykernel = "^6.4.1"
+dagit = "^0.12.14"
 
 [tool.poetry.extras]
 docs = [
