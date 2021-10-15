@@ -8,4 +8,5 @@ from .split import (
     plot_cluster_counts,
     cluster_split,
     merge_cluster_split,
+    chemprop_split_molecules_features,
 )

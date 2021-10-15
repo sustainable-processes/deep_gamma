@@ -1,3 +1,23 @@
+"""
+3 prediction cases
+Both molecules are trained on but now at a different temperature  / composition (easiest)
+Only trained on one of the molecules (medium)
+Not trained on either molecule (hardest)
+
+Three validation / test sets
+Leave out some compositions and temperatures during training
+Only one molecule in training set
+Both molecule not in training set
+
+Approach
+1. Randomly split molecule list into train and valid
+2. Valid CONT: Just training molecules at temperatures and compositions not test
+3. Valid MIX: All combinations of training molecules and validation molecules
+4. Valid INDP: Just combinations of molecules in the validation set
+5. Do 2-4 for test set as well
+
+"""
+
 from deep_gamma import RecursiveNamespace, USE_MODIN
 from chemprop.data import generate_scaffold
 from rdkit import Chem, DataStructs
@@ -25,6 +45,7 @@ else:
         smiles_column=Field(
             str,
             description="Column containing SMILES strings to use for forming clusters",
+            default_value="smiles",
         ),
         cutoff=Field(
             float,
@@ -35,11 +56,13 @@ else:
             description="Minimimum size of clusters. Any clusters smaller than this size are combined with the smallest cluster above the minimum cluster size.",
         ),
         cluster_column=Field(
-            str, description="Name of the column to create with the clusters"
+            str,
+            description="Name of the column to create with the clusters",
+            default_value="cluster",
         ),
     ),
     out=dict(
-        cluseters=Out(),
+        clusters=Out(),
         molecule_list_with_clusters=Out(
             io_manager_key="intermediate_parquet_io_manager"
         ),
@@ -115,7 +138,7 @@ def find_clusters(context, df: pd.DataFrame) -> Tuple[List, pd.DataFrame]:
     out=Out(io_manager_key="reporting_mpl_io_manager"),
 )
 def plot_cluster_counts(context, df: pd.DataFrame):
-    """Bar plot of scaffold frequency"""
+    """Bar plot of cluster counts"""
     fig, ax = plt.subplots(1)
     df[context.solid_config["cluster_column"]].value_counts().plot.bar(ax=ax)
     ax.set_xlabel("Clusters")
@@ -172,23 +195,23 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
         train_indices=Out(description="Indices of the training set"),
         valid_cont_indices=Out(
             description="Validation containing molecules in the training set at temperatures and compositions not used during training.",
-            io_manager_key="primary_np_io_manager",
+            io_manager_key="model_input_np_io_manager",
         ),
         valid_mix_indices=Out(
             description="All combinations of training molecules and validation molecules",
-            io_manager_key="primary_np_io_manager",
+            io_manager_key="model_input_np_io_manager",
         ),
         valid_indp_indices=Out(
             description="Just combinations of molecules in the validation set",
-            io_manager_key="primary_np_io_manager",
+            io_manager_key="model_input_np_io_manager",
         ),
         test_mix_indices=Out(
             description="All combinations of training molecules and test molecules",
-            io_manager_key="primary_np_io_manager",
+            io_manager_key="model_input_np_io_manager",
         ),
         test_indp_indices=Out(
             description="Just combinations of molecules in the test set",
-            io_manager_key="primary_np_io_manager",
+            io_manager_key="model_input_np_io_manager",
         ),
     ),
 )
@@ -273,22 +296,35 @@ def merge_cluster_split(
     yield Output(test_indp_indices, "test_indp_indices")
 
 
-# 3 prediction cases
-# Both molecules are trained on but now at a different temperature  / composition (easiest)
-# Only trained on one of the molecules
-# Not trained on either molecule
-
-# Three validation / test sets
-# Leave out some compositions and temperatures during training
-# Only one molecule in training set
-# Both molecule not in training set
-
-# approach
-# 1. Randomly split molecule list into train and valid
-# 2. Valid CONT: Just training molecules at temperatures and compositions not test
-# 3. Valid MIX: All combinations of training molecules and validation molecules
-# 4. Valid INDP: Just combinations of molecules in the validation set
-# 5. Do A-C for test set as well
+@op(
+    config_schema=dict(
+        smiles_columns=Field(
+            [str],
+            description="SMILES input columns",
+            default_value=["smiles_1", "smiles_2"],
+        ),
+        target_columns=Field(
+            [str],
+            description="Target columns to be predicted by chemprop",
+            default_value=["ln_gamma_1", "ln_gamma_2"],
+        ),
+        features_columns=Field(
+            [str],
+            description="List of extra features columns",
+            default_value=["temperature (K)", "x(1)"],
+        ),
+    ),
+    out=dict(
+        data_no_features=Out(pd.DataFrame, io_manager_key="model_input_csv_io_manager"),
+        features=Out(pd.DataFrame, io_manager_key="model_input_csv_io_manager"),
+    ),
+)
+def chemprop_split_molecules_features(context, data: pd.DataFrame):
+    config = RecursiveNamespace(**context.solid_config)
+    return (
+        data[config.smiles_columns + config.target_columns],
+        data[config.features_columns],
+    )
 
 
 def scaffold_groups(mols: List[str]):

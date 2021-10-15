@@ -10,12 +10,14 @@ from deep_gamma.ops import (
     find_clusters,
     plot_cluster_counts,
     cluster_split,
+    chemprop_split_molecules_features,
 )
 from deep_gamma.ops.split import merge_cluster_split
 from deep_gamma.resources import (
     parquet_io_manager,
     parquet_loader,
     csv_loader,
+    csv_io_manager,
     pil_io_manager,
     mpl_io_manager,
     np_io_manager,
@@ -45,8 +47,46 @@ def resolve_data():
 
 
 @graph
+def cluster_split_data(molecule_list_df: pd.DataFrame, data: pd.DataFrame):
+    """Split data into clusters and save split indices"""
+    # Cluster data using molecule list
+    clusters, clusters_df = find_clusters(molecule_list_df)
+
+    # Split data by clusters
+    train_inds, valid_inds, test_inds = cluster_split(clusters, clusters_df)
+    merge_cluster_split(train_inds, valid_inds, test_inds, clusters_df, data)
+
+    # Visualize clusters
+    plot_cluster_counts(clusters_df)
+
+
+@op(out={"molecule_list_with_smiles": Out(), "data": Out()})
+def dev_read_data():
+    """Dev mode read data in. Problably should change this to use Dagster modes"""
+    data = pd.read_parquet(DATA_PATH / "02_intermediate" / "data_with_smiles.pq")
+    molecule_list_df = pd.read_parquet(
+        DATA_PATH / "02_intermediate" / "molecule_list_with_smiles.pq"
+    )
+    return molecule_list_df, data
+
+
+@graph
+def cluster_split_data_dev():
+    """Just the cluster split"""
+    molecule_list_df, data = dev_read_data()
+    cluster_split_data(molecule_list_df, data)
+    chemprop_split_molecules_features(data)
+
+
+# The plan
+# 1. Split data into features and molecule-gamma pairs
+# 2. Use index_predetermined + crossval_index_sets to specify train and validation on the MIX set (leave off test)
+# 3. Set up a post training evaluation on CONT and INDP sets
+
+
+@graph
 def scaffold_split_data(df: pd.DataFrame):
-    """Split data based on scaffods"""
+    """Split data based on scaffolds. Abandonbed in favor of clustering."""
     # Get scaffolds
     df, scaffolds = get_scaffolds(df)
 
@@ -64,37 +104,15 @@ def scaffold_split_data(df: pd.DataFrame):
 
 
 @graph
-def cluster_split_data(molecule_list_df: pd.DataFrame, data: pd.DataFrame):
-    # Cluster data using molecule list
-    clusters, clusters_df = find_clusters(molecule_list_df)
-
-    # Split data by clusters
-    train_inds, valid_inds, test_inds = cluster_split(clusters, clusters_df)
-    splits = merge_cluster_split(train_inds, valid_inds, test_inds, clusters_df, data)
-
-    # Visualize clusters
-    plot_cluster_counts(clusters_df)
-
-
-@op(out={"molecule_list_with_smiles": Out(), "data": Out()})
-def dev_read_data():
-    data = pd.read_parquet(DATA_PATH / "02_intermediate" / "data_with_smiles.pq")
-    molecule_list_df = pd.read_parquet(
-        DATA_PATH / "02_intermediate" / "molecule_list_with_smiles.pq"
-    )
-    return molecule_list_df, data
-
-
-@graph
-def cluster_split_data_dev():
-    molecule_list_df, data = dev_read_data()
-    cluster_split_data(molecule_list_df, data)
-
-
-@graph
 def data_preprocessing():
-    molecule_list_df, df = resolve_data()
-    cluster_split_data(molecule_list_df)
+    """The full data preprocessing graph"""
+    # Resolve CAS numbers to SMILES and save for chemprop
+    molecule_list_df, data = resolve_data()
+    chemprop_split_molecules_features(data)
+
+    # Two alternative splits, ended up going with cluster split
+    scaffold_split(data)
+    cluster_split_data(molecule_list_df, data)
 
 
 # dp_job = data_preprocessing.to_job(
@@ -181,12 +199,17 @@ csplit_job = cluster_split_data_dev.to_job(
                 "compress": True,
             }
         ),
+        "feature_csv_io_manager": csv_io_manager.configured(
+            {"base_path": str(DATA_PATH / "04_feature")}
+        ),
     },
     config={
         "ops": {
             "cluster_split_data": {
                 "ops": {
                     "find_clusters": {
+                        # Tuned cutoff and min_cluster_size by hand to get
+                        # a good balance between train, validation and test.
                         "config": dict(
                             smiles_column="smiles",
                             cutoff=0.6,
