@@ -148,7 +148,6 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
     valid_inds: List[int] = []
     test_inds: List[int] = []
 
-    context.log.info("About to sort in scaffold sets")
     for cluster in clusters:
         if len(train_inds) + len(cluster) > train_cutoff:
             if len(train_inds) + len(valid_inds) + len(cluster) > valid_cutoff:
@@ -157,13 +156,17 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
                 valid_inds += cluster
         else:
             train_inds += cluster
+
+    context.log.info(f"Unique molecules in train: {len(train_inds)}")
+    context.log.info(f"Unique molecules in valid: {len(valid_inds)}")
+    context.log.info(f"Unique molecules in test: {len(test_inds)}")
     return train_inds, valid_inds, test_inds
 
 
 @op(
     config_schema=dict(
         # cluster_df_smiles_column=str,
-        subsample_valid_cont=Field(float, default_value=0.05),
+        subsample_valid_cont=Field(float),
     ),
     out=dict(
         train_indices=Out(description="Indices of the training set"),
@@ -206,51 +209,61 @@ def merge_cluster_split(
     )
 
     # Assign pairs which only contain molecules from the train set to train set
-    train_indices = data[
+    train_base_indices = data[
         (data["smiles_1"].isin(train_mol_df["smiles"]))
         & (data["smiles_2"].isin(train_mol_df["smiles"]))
     ].index.to_numpy()
 
     # Subsample to exclude some temperatures / compositions for valid CONT
-    n_train = len(train_indices)
-    train_select = np.random.choice(
-        train_indices, size=int((1.0 - config.subsample_valid_cont) * n_train)
+    n_train_base = len(train_base_indices)
+    rng = np.random.default_rng(1995)
+    train_select = rng.choice(
+        n_train_base,
+        size=int((1.0 - config.subsample_valid_cont) * n_train_base),
+        replace=False,
     )
-    valid_cont_indices = train_indices[train_indices != train_select]
-    train_indices = train_select
+    mask = np.zeros(n_train_base, dtype=bool)
+    mask[train_select] = True
+    train_indices = train_base_indices[mask]
+    valid_cont_indices = train_base_indices[~mask]
     context.log.info(f"Training set size: {len(train_indices)}")
+    context.log.info(f"Validation CONT size: {len(valid_cont_indices)}")
 
     # Validation MIX and INDP
     valid_mix_indices = data[
         (
             (data["smiles_1"].isin(train_mol_df["smiles"]))
-            & (data["smiles_1"].isin(valid_mol_df["smiles"]))
+            & (data["smiles_2"].isin(valid_mol_df["smiles"]))
         )
         | (
             (data["smiles_1"].isin(valid_mol_df["smiles"]))
-            & (data["smiles_1"].isin(train_mol_df["smiles"]))
+            & (data["smiles_2"].isin(train_mol_df["smiles"]))
         )
     ].index.to_numpy()
+    context.log.info(f"Validation MIX size: {len(valid_mix_indices)}")
     valid_indp_indices = data[
         (data["smiles_1"].isin(valid_mol_df["smiles"]))
         & (data["smiles_1"].isin(valid_mol_df["smiles"]))
     ].index.to_numpy()
+    context.log.info(f"Validation INDP size: {len(valid_indp_indices)}")
 
     # Test MIX and INDP
     test_mix_indices = data[
         (
             (data["smiles_1"].isin(train_mol_df["smiles"]))
-            & (data["smiles_1"].isin(test_mol_df["smiles"]))
+            & (data["smiles_2"].isin(test_mol_df["smiles"]))
         )
         | (
             (data["smiles_1"].isin(test_mol_df["smiles"]))
-            & (data["smiles_1"].isin(train_mol_df["smiles"]))
+            & (data["smiles_2"].isin(train_mol_df["smiles"]))
         )
     ].index.to_numpy()
+    context.log.info(f"Test MIX size: {len(test_mix_indices)}")
     test_indp_indices = data[
         (data["smiles_1"].isin(test_mol_df["smiles"]))
         & (data["smiles_1"].isin(test_mol_df["smiles"]))
     ].index.to_numpy()
+    context.log.info(f"Test INDP size: {len(valid_indp_indices)}")
 
     yield Output(train_indices, "train_indices")
     yield Output(valid_cont_indices, "valid_cont_indices")

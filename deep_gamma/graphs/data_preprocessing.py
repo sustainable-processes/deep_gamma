@@ -189,9 +189,9 @@ csplit_job = cluster_split_data_dev.to_job(
                     "find_clusters": {
                         "config": dict(
                             smiles_column="smiles",
-                            cutoff=0.8,
+                            cutoff=0.6,
                             cluster_column="cluster",
-                            min_cluster_size=10,
+                            min_cluster_size=2,
                         )
                     },
                     "plot_cluster_counts": {
@@ -201,9 +201,11 @@ csplit_job = cluster_split_data_dev.to_job(
                         },
                     },
                     "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
+                    "merge_cluster_split": {"config": dict(subsample_valid_cont=0.01)},
                 }
             },
-        }
+        },
+        "loggers": {"console": {"config": {"log_level": "INFO"}}},
     },
 )
 
