@@ -1,7 +1,11 @@
+from deep_gamma import USE_MODIN
 import os
 from typing import Union
 
-import pandas as pd
+if USE_MODIN:
+    import modin.pandas as pd
+else:
+    import pandas as pd
 from dagster import (
     AssetKey,
     EventMetadataEntry,

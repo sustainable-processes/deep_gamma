@@ -1,4 +1,5 @@
 from dagster import op, graph, GraphOut, InputDefinition, Out, ExperimentalWarning
+from deep_gamma import USE_MODIN
 from deep_gamma.ops import (
     lookup_smiles,
     resolve_smiles,
@@ -8,16 +9,23 @@ from deep_gamma.ops import (
     plot_scaffold_counts,
     find_clusters,
     plot_cluster_counts,
+    cluster_split,
 )
+from deep_gamma.ops.split import merge_cluster_split
 from deep_gamma.resources import (
     parquet_io_manager,
     parquet_loader,
     csv_loader,
     pil_io_manager,
     mpl_io_manager,
+    np_io_manager,
 )
 from deep_gamma import DATA_PATH
-import pandas as pd
+
+if USE_MODIN:
+    import modin.pandas as pd
+else:
+    import pandas as pd
 from typing import Union
 from pathlib import Path
 
@@ -56,12 +64,13 @@ def scaffold_split_data(df: pd.DataFrame):
 
 
 @graph
-def cluster_split_data(molecule_list_df: pd.DataFrame):
+def cluster_split_data(molecule_list_df: pd.DataFrame, data: pd.DataFrame):
     # Cluster data using molecule list
-    clusters_df = find_clusters(molecule_list_df)
+    clusters, clusters_df = find_clusters(molecule_list_df)
 
     # Split data by clusters
-    # split_data()
+    train_inds, valid_inds, test_inds = cluster_split(clusters, clusters_df)
+    splits = merge_cluster_split(train_inds, valid_inds, test_inds, clusters_df, data)
 
     # Visualize clusters
     plot_cluster_counts(clusters_df)
@@ -79,8 +88,7 @@ def dev_read_data():
 @graph
 def cluster_split_data_dev():
     molecule_list_df, data = dev_read_data()
-
-    cluster_split_data(molecule_list_df)
+    cluster_split_data(molecule_list_df, data)
 
 
 @graph
@@ -166,6 +174,13 @@ csplit_job = cluster_split_data_dev.to_job(
         "reporting_mpl_io_manager": mpl_io_manager.configured(
             {"base_path": str(DATA_PATH / "08_reporting")}
         ),
+        "primary_np_io_manager": np_io_manager.configured(
+            {
+                "base_path": str(DATA_PATH / "03_primary"),
+                "save_txt": True,
+                "compress": True,
+            }
+        ),
     },
     config={
         "ops": {
@@ -185,12 +200,15 @@ csplit_job = cluster_split_data_dev.to_job(
                             "result": {"filename": "cluster_counts.png", "dpi": 300}
                         },
                     },
+                    "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
                 }
             },
         }
     },
 )
 
+if __name__ == "__main__":
+    csplit_job.execute_in_process()
 # def count_cluster(cutoff):
 #     dists = []
 #     nfps = len(fps)

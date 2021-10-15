@@ -2,8 +2,6 @@
 Resolve molecules in any representation to SMILES strings that can be read by chemprop.
 
 """
-from ast import For
-from numpy import insert
 import pandas as pd
 import cirpy
 from tqdm.auto import tqdm

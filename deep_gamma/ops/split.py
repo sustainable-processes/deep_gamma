@@ -1,24 +1,23 @@
-from ast import For
-from cgitb import small
-from dagster import op, Out, Field, Output, Array
-from deep_gamma import RecursiveNamespace
-
+from deep_gamma import RecursiveNamespace, USE_MODIN
 from chemprop.data import generate_scaffold
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from rdkit.ML.Cluster import Butina
-
-
 from sklearn.model_selection import GroupShuffleSplit, train_test_split
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from dagster import op, Out, Field, Output, Array
 from PIL.Image import Image
 from tqdm.auto import tqdm
-import logging
-from typing import List, Tuple, Any, Dict
+from typing import List, Tuple, Dict
 from tqdm.auto import tqdm
+import os
+
+if USE_MODIN:
+    import modin.pandas as pd
+else:
+    import pandas as pd
 
 
 @op(
@@ -40,12 +39,13 @@ from tqdm.auto import tqdm
         ),
     ),
     out=dict(
+        cluseters=Out(),
         molecule_list_with_clusters=Out(
             io_manager_key="intermediate_parquet_io_manager"
-        )
+        ),
     ),
 )
-def find_clusters(context, df: pd.DataFrame) -> pd.DataFrame:
+def find_clusters(context, df: pd.DataFrame) -> Tuple[List, pd.DataFrame]:
     """Find clusters using the Butina algorithm"""
     config = RecursiveNamespace(**context.solid_config)
     # Create fingerprints
@@ -102,7 +102,7 @@ def find_clusters(context, df: pd.DataFrame) -> pd.DataFrame:
     for i, cluster in enumerate(clusters):
         df.at[list(cluster), config.cluster_column] = i
 
-    return df
+    return clusters, df
 
 
 @op(
@@ -126,14 +126,156 @@ def plot_cluster_counts(context, df: pd.DataFrame):
     return fig
 
 
-# @op
-# def merge_clusters(context, data: pd.Dataframe, cluster_df: pd.DataFrame)-> pd.DataFrame:
-#     for
-#     return data.merge(cluster_df, left_on="")
+@op(
+    config_schema=dict(
+        valid_size=Field(
+            float,
+            description="Fraction of data in validation set",
+        ),
+        test_size=Field(float, description="Fraction data in test set"),
+    ),
+    out=dict(train_inds=Out(), valid_inds=Out(), test_inds=Out()),
+)
+def cluster_split(context, clusters: list, data: pd.DataFrame):
+    """This is mostly copied from DeepChem ButinaSplitter"""
+    config = RecursiveNamespace(**context.solid_config)
+    train_size = 1.0 - config.test_size - config.valid_size
+
+    # Split according to clusters
+    train_cutoff = train_size * len(data)
+    valid_cutoff = (train_size + config.valid_size) * len(data)
+    train_inds: List[int] = []
+    valid_inds: List[int] = []
+    test_inds: List[int] = []
+
+    context.log.info("About to sort in scaffold sets")
+    for cluster in clusters:
+        if len(train_inds) + len(cluster) > train_cutoff:
+            if len(train_inds) + len(valid_inds) + len(cluster) > valid_cutoff:
+                test_inds += cluster
+            else:
+                valid_inds += cluster
+        else:
+            train_inds += cluster
+    return train_inds, valid_inds, test_inds
 
 
-def cluster_split(data: pd.DataFrame) -> pd.DataFrame:
-    pass
+@op(
+    config_schema=dict(
+        # cluster_df_smiles_column=str,
+        subsample_valid_cont=Field(float, default_value=0.05),
+    ),
+    out=dict(
+        train_indices=Out(description="Indices of the training set"),
+        valid_cont_indices=Out(
+            description="Validation containing molecules in the training set at temperatures and compositions not used during training.",
+            io_manager_key="primary_np_io_manager",
+        ),
+        valid_mix_indices=Out(
+            description="All combinations of training molecules and validation molecules",
+            io_manager_key="primary_np_io_manager",
+        ),
+        valid_indp_indices=Out(
+            description="Just combinations of molecules in the validation set",
+            io_manager_key="primary_np_io_manager",
+        ),
+        test_mix_indices=Out(
+            description="All combinations of training molecules and test molecules",
+            io_manager_key="primary_np_io_manager",
+        ),
+        test_indp_indices=Out(
+            description="Just combinations of molecules in the test set",
+            io_manager_key="primary_np_io_manager",
+        ),
+    ),
+)
+def merge_cluster_split(
+    context,
+    train_inds: list,
+    valid_inds: list,
+    test_inds: list,
+    clusters_df: pd.DataFrame,
+    data: pd.DataFrame,
+):
+    config = RecursiveNamespace(**context.solid_config)
+    # Create train, valid and test subset molecule_list dfs
+    train_mol_df, valid_mol_df, test_mol_df = (
+        clusters_df.iloc[train_inds],
+        clusters_df.iloc[valid_inds],
+        clusters_df.iloc[test_inds],
+    )
+
+    # Assign pairs which only contain molecules from the train set to train set
+    train_indices = data[
+        (data["smiles_1"].isin(train_mol_df["smiles"]))
+        & (data["smiles_2"].isin(train_mol_df["smiles"]))
+    ].index.to_numpy()
+
+    # Subsample to exclude some temperatures / compositions for valid CONT
+    n_train = len(train_indices)
+    train_select = np.random.choice(
+        train_indices, size=int((1.0 - config.subsample_valid_cont) * n_train)
+    )
+    valid_cont_indices = train_indices[train_indices != train_select]
+    train_indices = train_select
+    context.log.info(f"Training set size: {len(train_indices)}")
+
+    # Validation MIX and INDP
+    valid_mix_indices = data[
+        (
+            (data["smiles_1"].isin(train_mol_df["smiles"]))
+            & (data["smiles_1"].isin(valid_mol_df["smiles"]))
+        )
+        | (
+            (data["smiles_1"].isin(valid_mol_df["smiles"]))
+            & (data["smiles_1"].isin(train_mol_df["smiles"]))
+        )
+    ].index.to_numpy()
+    valid_indp_indices = data[
+        (data["smiles_1"].isin(valid_mol_df["smiles"]))
+        & (data["smiles_1"].isin(valid_mol_df["smiles"]))
+    ].index.to_numpy()
+
+    # Test MIX and INDP
+    test_mix_indices = data[
+        (
+            (data["smiles_1"].isin(train_mol_df["smiles"]))
+            & (data["smiles_1"].isin(test_mol_df["smiles"]))
+        )
+        | (
+            (data["smiles_1"].isin(test_mol_df["smiles"]))
+            & (data["smiles_1"].isin(train_mol_df["smiles"]))
+        )
+    ].index.to_numpy()
+    test_indp_indices = data[
+        (data["smiles_1"].isin(test_mol_df["smiles"]))
+        & (data["smiles_1"].isin(test_mol_df["smiles"]))
+    ].index.to_numpy()
+
+    yield Output(train_indices, "train_indices")
+    yield Output(valid_cont_indices, "valid_cont_indices")
+    yield Output(valid_mix_indices, "valid_mix_indices")
+    yield Output(valid_indp_indices, "valid_indp_indices")
+    yield Output(test_mix_indices, "test_mix_indices")
+    yield Output(test_indp_indices, "test_indp_indices")
+
+
+# 3 prediction cases
+# Both molecules are trained on but now at a different temperature  / composition (easiest)
+# Only trained on one of the molecules
+# Not trained on either molecule
+
+# Three validation / test sets
+# Leave out some compositions and temperatures during training
+# Only one molecule in training set
+# Both molecule not in training set
+
+# approach
+# 1. Randomly split molecule list into train and valid
+# 2. Valid CONT: Just training molecules at temperatures and compositions not test
+# 3. Valid MIX: All combinations of training molecules and validation molecules
+# 4. Valid INDP: Just combinations of molecules in the validation set
+# 5. Do A-C for test set as well
 
 
 def scaffold_groups(mols: List[str]):

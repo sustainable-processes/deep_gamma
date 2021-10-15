@@ -6,4 +6,6 @@ from .split import (
     plot_scaffold_counts,
     find_clusters,
     plot_cluster_counts,
+    cluster_split,
+    merge_cluster_split,
 )
