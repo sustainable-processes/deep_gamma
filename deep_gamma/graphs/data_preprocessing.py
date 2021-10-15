@@ -192,14 +192,14 @@ csplit_job = cluster_split_data_dev.to_job(
         "reporting_mpl_io_manager": mpl_io_manager.configured(
             {"base_path": str(DATA_PATH / "08_reporting")}
         ),
-        "primary_np_io_manager": np_io_manager.configured(
+        "model_input_np_io_manager": np_io_manager.configured(
             {
                 "base_path": str(DATA_PATH / "03_primary"),
                 "save_txt": True,
                 "compress": True,
             }
         ),
-        "feature_csv_io_manager": csv_io_manager.configured(
+        "model_input_csv_io_manager": csv_io_manager.configured(
             {"base_path": str(DATA_PATH / "04_feature")}
         ),
     },
