@@ -5,6 +5,7 @@ import wandb
 import numpy as np
 from pathlib import Path
 from typing import Optional
+from typing_extensions import Literal
 
 
 class VLETrainArgs(TrainArgs):
@@ -13,6 +14,18 @@ class VLETrainArgs(TrainArgs):
     experiment_name: str = "cosmo"
     lr_scheduler: str = "Noam"
     split_type = "cv-no-test"
+    split_type: Literal[
+        "random",
+        "scaffold_balanced",
+        "predetermined",
+        "crossval",
+        "cv",
+        "cv-no-test",
+        "index_predetermined",
+        "random_with_repeated_smiles",
+        "custom",
+    ] = "random"
+    """Method of splitting the data into train/val/test."""
 
     def process_args(self) -> None:
         data_dir = Path(self.data_dir)
@@ -21,12 +34,14 @@ class VLETrainArgs(TrainArgs):
         if self.features_path is None:
             self.features_path = [str(data_dir / "features.csv")]
 
-        if self.split_type == "index_predetermined":
+        super().process_args()
+
+        if self.split_type == "custom":
             train_indices = np.loadtxt(data_dir / "train_indices.txt")
             valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt")
             test_indices = []
-            self.crossval_index_sets = [train_indices, valid_indices, test_indices]
-        return super().process_args()
+
+            self._crossval_index_sets = [train_indices, valid_indices, test_indices]
 
 
 def train_model():
