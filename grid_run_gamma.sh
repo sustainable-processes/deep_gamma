@@ -1,6 +1,6 @@
 # Local:  grid_run_gamma.sh --data_dir data/05_model_input
 
-# Grid:  grid run --instance_type g4dn.xlarge grid_run_gamma.sh --data_dir grid:cosmo-gammas:1 --experiment_name cosmo_gammas
+# Grid: grid run --instance_type g4dn.xlarge grid_run_gamma.sh --data_dir grid:cosmo-gammas:1 --experiment_name cosmo_gammas
 
 #### Login into wandb
 wandb login eddd91debd4aeb24f212695d6c663f504fdb7e3c
