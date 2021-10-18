@@ -2,12 +2,31 @@ from chemprop.train import run_training, cross_validate
 from chemprop.args import TrainArgs
 import wandb
 
+import numpy as np
 from pathlib import Path
+from typing import Optional
 
 
 class VLETrainArgs(TrainArgs):
+    data_dir: Optional[str] = None
+    data_path: Optional[str] = None
     experiment_name: str = "cosmo"
     lr_scheduler: str = "Noam"
+    split_type = "cv-no-test"
+
+    def process_args(self) -> None:
+        data_dir = Path(self.data_dir)
+        if self.data_path is None:
+            self.data_path = str(data_dir / "data_no_features.csv")
+        if self.features_path is None:
+            self.features_path = [str(data_dir / "features.csv")]
+
+        if self.split_type == "index_predetermined":
+            train_indices = np.loadtxt(data_dir / "train_indices.txt")
+            valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt")
+            test_indices = []
+            self.crossval_index_sets = [train_indices, valid_indices, test_indices]
+        return super().process_args()
 
 
 def train_model():
@@ -34,3 +53,7 @@ def train_model():
 
     # Run training
     cross_validate(args=args, train_func=run_training)
+
+
+if __name__ == "__main__":
+    train_model()

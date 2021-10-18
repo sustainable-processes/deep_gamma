@@ -25,6 +25,8 @@ CIRpy = "^1.0.2"
 pyarrow = "^5.0.0"
 wandb = "^0.12.4"
 tensorboardX = "^2.4"
+dagster-shell = "^0.12.15"
+tensorboard = "^2.7.0"
 
 
 [tool.poetry.dev-dependencies]
@@ -33,16 +35,6 @@ ipykernel = "^6.4.1"
 dagit = "^0.12.14"
 
 [tool.poetry.extras]
-docs = [
-    "sphinx",
-    "sphinx_rtd_theme",
-    "nbsphinx",
-    "nbstripout",
-    "recommonmark",
-    "sphinx-autodoc-typehints",
-    "sphinx_copybutton",
-    "ipykernel"
-]
 cosmo = ["cosmopy", "notify-run"]
 
 [build-system]

@@ -192,7 +192,10 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
         subsample_valid_cont=Field(float),
     ),
     out=dict(
-        train_indices=Out(description="Indices of the training set"),
+        train_indices=Out(
+            description="Indices of the training set",
+            io_manager_key="model_input_np_io_manager",
+        ),
         valid_cont_indices=Out(
             description="Validation containing molecules in the training set at temperatures and compositions not used during training.",
             io_manager_key="model_input_np_io_manager",
