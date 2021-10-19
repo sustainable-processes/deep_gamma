@@ -4,7 +4,7 @@ import wandb
 
 import numpy as np
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from typing_extensions import Literal
 
 
@@ -24,8 +24,16 @@ class VLETrainArgs(TrainArgs):
         "index_predetermined",
         "random_with_repeated_smiles",
         "custom",
-    ] = "random"
+    ] = "custom"
     """Method of splitting the data into train/val/test."""
+    number_of_molecules: int = 2
+    dataset_type: Literal["regression", "classification", "multiclass"] = "regression"
+    smiles_columns: List[str] = ["smiles_1", "smiles_2"]
+    target_columns: List[str] = ["ln_gamma_1", "ln_gamma_2"]
+    epochs: int = 100
+    save_preds: bool = True
+    extra_metrics: List[str] = ["r2", "mae"]
+    mpn_shared: bool = True
 
     def process_args(self) -> None:
         data_dir = Path(self.data_dir)
@@ -41,7 +49,8 @@ class VLETrainArgs(TrainArgs):
             valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt")
             test_indices = []
 
-            self._crossval_index_sets = [train_indices, valid_indices, test_indices]
+            self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
+            self.split_type = "index_predetermined"
 
 
 def train_model():
