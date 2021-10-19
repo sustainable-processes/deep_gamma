@@ -59,7 +59,7 @@ def train_model():
     args = VLETrainArgs().parse_args()
 
     # Setup wandb
-    wandb.login(key=os.environ["WANDB_API_KEY"])
+    wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
     wandb.init(entity="ceb-sre", project="vle", name=args.experiment_name)
     wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
     wandb.config.update(args.as_dict())
