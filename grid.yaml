@@ -1,4 +1,7 @@
 compute:
+  provider:
+    region: us-east-1
+    vendor: aws
   train:
     instance: g4dn.xlarge
     environment:
