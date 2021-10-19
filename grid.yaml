@@ -2,6 +2,7 @@ compute:
   provider:
     region: us-east-1
     vendor: aws
+    credentials: "dfajklj"
   train:
     instance: g4dn.xlarge
     environment:
