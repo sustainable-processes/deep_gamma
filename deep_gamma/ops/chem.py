@@ -36,7 +36,7 @@ class VLETrainArgs(TrainArgs):
     mpn_shared: bool = True
 
     def process_args(self) -> None:
-        data_dir = Path(self.data_dir)
+        data_dir = Path(self.data_dir) / "05_model_input"
         if self.data_path is None:
             self.data_path = str(data_dir / "data_no_features.csv")
         if self.features_path is None:
