@@ -2,14 +2,15 @@ compute:
   provider:
     region: us-east-1
     vendor: aws
-    credentials: "dfajklj"
+    credentials: "remove-me"
   train:
+    cpus: 1
+    gpus: 0
     instance: g4dn.xlarge
+    nodes: 0
+    scaled_down_seconds: 1800
     environment:
       WANDB_API_KEY: "eddd91debd4aeb24f212695d6c663f504fdb7e3c"
     dependency_file_info:
       package_manager: pip
       path: requirements.txt # can have any name 
-hyper_params: 
-  settings: 
-    strategy: grid_search
