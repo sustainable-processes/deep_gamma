@@ -10,9 +10,10 @@ from typing_extensions import Literal
 
 
 class VLETrainArgs(TrainArgs):
+    experiment_name: str
+    artifact_name: str
     data_dir: Optional[str] = "data/"
     data_path: Optional[str] = None
-    experiment_name: str = "cosmo"
     lr_scheduler: str = "Noam"
     split_type = "cv-no-test"
     split_type: Literal[
@@ -64,7 +65,7 @@ def train_model():
 
     # Setup wandb
     wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
-    wandb.init(entity="ceb-sre", project="vle", name=args.experiment_name)
+    run = wandb.init(entity="ceb-sre", project="vle", name=args.experiment_name)
     wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
     wandb.config.update(args.as_dict())
 
@@ -83,6 +84,11 @@ def train_model():
 
     # Run training
     cross_validate(args=args, train_func=run_training)
+
+    # Save model as an artifact
+    artifact = wandb.Artifact(args.artifact_name, type="model")
+    artifact.add_file(save_dir / "fold_0/model_0/model.pt")
+    run.log_artifact(artifact)
 
 
 if __name__ == "__main__":
