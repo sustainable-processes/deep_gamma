@@ -1,7 +1,11 @@
-train:
-  instance: g4dn.xlarge
-  environment:
-    WANDB_API_KEY: "eddd91debd4aeb24f212695d6c663f504fdb7e3c"
-  dependency_file_info:
-    package_manager: pip
-    path: requirements.txt # can have any name 
+compute:
+  train:
+    instance: g4dn.xlarge
+    environment:
+      WANDB_API_KEY: "eddd91debd4aeb24f212695d6c663f504fdb7e3c"
+    dependency_file_info:
+      package_manager: pip
+      path: requirements.txt # can have any name 
+hyper_params: 
+  settings: 
+    strategy: grid_search
