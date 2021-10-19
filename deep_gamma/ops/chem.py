@@ -2,6 +2,7 @@ from chemprop.train import run_training, cross_validate
 from chemprop.args import TrainArgs
 import wandb
 
+import os
 import numpy as np
 from pathlib import Path
 from typing import Optional, List
@@ -58,6 +59,7 @@ def train_model():
     args = VLETrainArgs().parse_args()
 
     # Setup wandb
+    wandb.login(key=os.environ["WANDB_API_KEY"])
     wandb.init(entity="ceb-sre", project="vle", name=args.experiment_name)
     wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
     wandb.config.update(args.as_dict())
