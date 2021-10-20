@@ -1,5 +1,3 @@
-from chemprop.train import run_training, cross_validate
-from chemprop.args import TrainArgs, Metric
 import wandb
 
 import os
@@ -7,6 +5,24 @@ import numpy as np
 from pathlib import Path
 from typing import Optional, List
 from typing_extensions import Literal
+
+
+from collections import defaultdict
+import csv
+import json
+from logging import Logger
+import os
+from typing import Callable, Dict, List, Tuple
+from functools import partialmethod
+import numpy as np
+import pandas as pd
+from pathlib import Path
+import json
+
+from chemprop.args import TrainArgs, Metric
+from chemprop.train.cross_validate import cross_validate
+from chemprop.train.run_training import run_training
+
 
 
 class VLETrainArgs(TrainArgs):
@@ -40,6 +56,8 @@ class VLETrainArgs(TrainArgs):
     hidden_size: int = 200
     metric: Metric = "mse"
     activation: str = "LeakyReLU"
+    weight_encodings: bool = False
+    weights_columns: List[str] = None
 
     def process_args(self) -> None:
         data_dir = Path(self.data_dir) / "05_model_input"

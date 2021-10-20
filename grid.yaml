@@ -4,10 +4,10 @@ compute:
     vendor: aws
     credentials: "remove-me"
   train:
-    cpus: 1
+    cpus: 8
     gpus: 1
-    instance: g4dn.xlarge
-    nodes: 0
+    instance: g4dn.2xlarge
+    nodes: 0  
     environment:
       WANDB_API_KEY: eddd91debd4aeb24f212695d6c663f504fdb7e3c
     dependency_file_info:
