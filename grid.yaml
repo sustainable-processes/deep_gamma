@@ -4,7 +4,7 @@ compute:
     vendor: aws
     credentials: "remove-me"
   train:
-    cpus: 8
+    cpus: 7
     gpus: 1
     instance: g4dn.2xlarge
     nodes: 0  
