@@ -50,6 +50,7 @@ class VLETrainArgs(TrainArgs):
     target_columns: List[str] = ["ln_gamma_1", "ln_gamma_2"]
     epochs: int = 100
     num_workers: int = 7
+    cache_cutoff: int = int(1e9)
     save_preds: bool = True
     extra_metrics: List[str] = ["r2", "mae"]
     mpn_shared: bool = True
