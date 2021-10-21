@@ -85,7 +85,10 @@ def train_model():
     wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
     run = wandb.init(entity="ceb-sre", project="vle", name=args.experiment_name)
     wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
-    wandb.config.update(args.as_dict())
+    # Don't put all the split data on wandb
+    d = args.as_dict()
+    d.pop("crossval_index_sets")
+    wandb.config.update(d)
 
     # Change save_dir to wandb run directory
     args.save_dir = wandb.run.dir
