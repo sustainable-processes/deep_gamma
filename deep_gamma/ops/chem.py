@@ -69,12 +69,22 @@ class VLETrainArgs(TrainArgs):
         super().process_args()
 
         if self.split_type == "custom":
-            train_indices = np.loadtxt(data_dir / "train_indices.txt").tolist()
-            valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt").tolist()
+            train_indices = np.loadtxt(data_dir / "train_indices.txt").astype(int)
+            valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt").astype(int)
             test_indices = []
+
 
             self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
             self.split_type = "index_predetermined"
+
+    @property
+    def crossval_index_sets(self) -> List[List[List[int]]]:
+        """Index sets used for splitting data into train/validation/test during cross-validation"""
+        to_return = []
+        for crossval_index_set in self._crossval_index_sets:
+            to_return.append([list(indices) for indices in crossval_index_set])
+        return to_return
+        
 
 
 def train_model():
