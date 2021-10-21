@@ -31,7 +31,6 @@ class VLETrainArgs(TrainArgs):
     data_dir: Optional[str] = "data/"
     data_path: Optional[str] = None
     lr_scheduler: str = "Noam"
-    split_type = "cv-no-test"
     split_type: Literal[
         "random",
         "scaffold_balanced",
@@ -53,13 +52,12 @@ class VLETrainArgs(TrainArgs):
     cache_cutoff: int = int(1e9)
     save_preds: bool = True
     extra_metrics: List[str] = ["r2", "mae"]
+    metric: Metric = "mse"
     mpn_shared: bool = True
     depth: int = 4
     hidden_size: int = 200
-    metric: Metric = "mse"
     activation: str = "LeakyReLU"
-    weight_encodings: bool = False
-    weights_columns: List[str] = None
+    
 
     def process_args(self) -> None:
         data_dir = Path(self.data_dir) / "05_model_input"
@@ -71,8 +69,8 @@ class VLETrainArgs(TrainArgs):
         super().process_args()
 
         if self.split_type == "custom":
-            train_indices = np.loadtxt(data_dir / "train_indices.txt")
-            valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt")
+            train_indices = np.loadtxt(data_dir / "train_indices.txt").tolist()
+            valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt").tolist()
             test_indices = []
 
             self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
