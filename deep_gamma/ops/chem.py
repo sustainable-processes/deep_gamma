@@ -77,13 +77,6 @@ class VLETrainArgs(TrainArgs):
             self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
             self.split_type = "index_predetermined"
 
-    @property
-    def crossval_index_sets(self) -> List[List[List[int]]]:
-        """Index sets used for splitting data into train/validation/test during cross-validation"""
-        to_return = []
-        for crossval_index_set in self._crossval_index_sets:
-            to_return.append([list(indices) for indices in crossval_index_set])
-        return to_return
         
 
 
