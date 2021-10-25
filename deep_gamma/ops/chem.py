@@ -30,18 +30,6 @@ class VLETrainArgs(TrainArgs):
     data_dir: Optional[str] = "data/"
     data_path: Optional[str] = None
     lr_scheduler: str = "Noam"
-    split_type: Literal[
-        "random",
-        "scaffold_balanced",
-        "predetermined",
-        "crossval",
-        "cv",
-        "cv-no-test",
-        "index_predetermined",
-        "random_with_repeated_smiles",
-        "custom",
-    ] = "custom"
-    """Method of splitting the data into train/val/test."""
     number_of_molecules: int = 2
     dataset_type: Literal["regression", "classification", "multiclass"] = "regression"
     smiles_columns: List[str] = ["smiles_1", "smiles_2"]
@@ -67,6 +55,10 @@ class VLETrainArgs(TrainArgs):
             self.separate_val_path = str(data_dir / "valid_mix.csv")
         if self.separate_val_features_path is None:
             self.separate_val_features_path = [str(data_dir / "valid_mix_features.csv")]
+        if self.separate_test_path is None:
+            self.separate_test_path = str(data_dir / "test_mix.csv")
+        if self.separate_test_features_path is None:
+            self.separate_test_features_path = str(data_dir / "test_mix_features.csv")
 
         super().process_args()
 
