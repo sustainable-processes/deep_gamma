@@ -194,27 +194,27 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
     out=dict(
         train_indices=Out(
             description="Indices of the training set",
-            io_manager_key="model_input_np_io_manager",
+            # io_manager_key="model_input_np_io_manager",
         ),
         valid_cont_indices=Out(
             description="Validation containing molecules in the training set at temperatures and compositions not used during training.",
-            io_manager_key="model_input_np_io_manager",
+            # io_manager_key="model_input_np_io_manager",
         ),
         valid_mix_indices=Out(
             description="All combinations of training molecules and validation molecules",
-            io_manager_key="model_input_np_io_manager",
+            # io_manager_key="model_input_np_io_manager",
         ),
         valid_indp_indices=Out(
             description="Just combinations of molecules in the validation set",
-            io_manager_key="model_input_np_io_manager",
+            # io_manager_key="model_input_np_io_manager",
         ),
         test_mix_indices=Out(
             description="All combinations of training molecules and test molecules",
-            io_manager_key="model_input_np_io_manager",
+            # io_manager_key="model_input_np_io_manager",
         ),
         test_indp_indices=Out(
             description="Just combinations of molecules in the test set",
-            io_manager_key="model_input_np_io_manager",
+            # io_manager_key="model_input_np_io_manager",
         ),
     ),
 )

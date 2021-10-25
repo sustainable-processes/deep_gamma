@@ -24,7 +24,6 @@ from chemprop.train.cross_validate import cross_validate
 from chemprop.train.run_training import run_training
 
 
-
 class VLETrainArgs(TrainArgs):
     experiment_name: str
     artifact_name: str
@@ -57,27 +56,27 @@ class VLETrainArgs(TrainArgs):
     depth: int = 4
     hidden_size: int = 200
     activation: str = "LeakyReLU"
-    
 
     def process_args(self) -> None:
         data_dir = Path(self.data_dir) / "05_model_input"
         if self.data_path is None:
-            self.data_path = str(data_dir / "data_no_features.csv")
+            self.data_path = str(data_dir / "train.csv")
         if self.features_path is None:
-            self.features_path = [str(data_dir / "features.csv")]
+            self.features_path = [str(data_dir / "train_features.csv")]
+        if self.separate_val_path is None:
+            self.separate_val_path = str(data_dir / "valid_mix.csv")
+        if self.separate_val_features_path is None:
+            self.separate_val_features_path = str(data_dir / "valid_mix_features.csv")
 
         super().process_args()
 
-        if self.split_type == "custom":
-            train_indices = np.loadtxt(data_dir / "train_indices.txt").astype(int)
-            valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt").astype(int)
-            test_indices = []
+        # if self.split_type == "custom":
+        #     train_indices = np.loadtxt(data_dir / "train_indices.txt").astype(int)
+        #     valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt").astype(int)
+        #     test_indices = []
 
-
-            self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
-            self.split_type = "index_predetermined"
-
-        
+        #     self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
+        #     self.split_type = "index_predetermined"
 
 
 def train_model():

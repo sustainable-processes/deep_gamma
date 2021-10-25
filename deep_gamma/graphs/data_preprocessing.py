@@ -54,10 +54,26 @@ def cluster_split_data(molecule_list_df: pd.DataFrame, data: pd.DataFrame):
 
     # Split data by clusters
     train_inds, valid_inds, test_inds = cluster_split(clusters, clusters_df)
-    merge_cluster_split(train_inds, valid_inds, test_inds, clusters_df, data)
+    (
+        train_indices,
+        valid_cont_indices,
+        valid_mix_indices,
+        valid_indp_indices,
+        test_mix_indices,
+        test_indp_indices,
+    ) = merge_cluster_split(train_inds, valid_inds, test_inds, clusters_df, data)
 
     # Visualize clusters
     plot_cluster_counts(clusters_df)
+
+    return (
+        train_indices,
+        valid_cont_indices,
+        valid_mix_indices,
+        valid_indp_indices,
+        test_mix_indices,
+        test_indp_indices,
+    )
 
 
 @op(out={"molecule_list_with_smiles": Out(), "data": Out()})
@@ -74,7 +90,15 @@ def dev_read_data():
 def cluster_split_data_dev():
     """Just the cluster split"""
     molecule_list_df, data = dev_read_data()
-    cluster_split_data(molecule_list_df, data)
+    (
+        train_indices,
+        valid_cont_indices,
+        valid_mix_indices,
+        valid_indp_indices,
+        test_mix_indices,
+        test_indp_indices,
+    ) = cluster_split_data(molecule_list_df, data)
+    # cluster_split_data(molecule_list_df, data)
     chemprop_split_molecules_features(data)
 
 
