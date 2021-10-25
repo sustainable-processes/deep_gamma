@@ -53,7 +53,7 @@ class VLETrainArgs(TrainArgs):
     extra_metrics: List[str] = ["r2", "mae"]
     metric: Metric = "mse"
     mpn_shared: bool = True
-    depth: int = 4
+    depth: int = 3
     hidden_size: int = 200
     activation: str = "LeakyReLU"
 
