@@ -53,7 +53,7 @@ class VLETrainArgs(TrainArgs):
     extra_metrics: List[str] = ["r2", "mae"]
     metric: Metric = "mse"
     mpn_shared: bool = True
-    depth: int = 3
+    depth: int = 4
     hidden_size: int = 200
     activation: str = "LeakyReLU"
 
@@ -66,7 +66,7 @@ class VLETrainArgs(TrainArgs):
         if self.separate_val_path is None:
             self.separate_val_path = str(data_dir / "valid_mix.csv")
         if self.separate_val_features_path is None:
-            self.separate_val_features_path = str(data_dir / "valid_mix_features.csv")
+            self.separate_val_features_path = [str(data_dir / "valid_mix_features.csv")]
 
         super().process_args()
 
