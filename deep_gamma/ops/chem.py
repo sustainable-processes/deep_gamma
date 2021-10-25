@@ -58,7 +58,7 @@ class VLETrainArgs(TrainArgs):
         if self.separate_test_path is None:
             self.separate_test_path = str(data_dir / "test_mix.csv")
         if self.separate_test_features_path is None:
-            self.separate_test_features_path = str(data_dir / "test_mix_features.csv")
+            self.separate_test_features_path = [str(data_dir / "test_mix_features.csv")]
 
         super().process_args()
 
