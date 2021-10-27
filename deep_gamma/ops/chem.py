@@ -44,6 +44,10 @@ class VLETrainArgs(TrainArgs):
     depth: int = 4
     hidden_size: int = 200
     activation: str = "LeakyReLU"
+    batch_size: int = 1000
+    wandb_checkpoint_run: str = None
+    wandb_entity: str = "ceb-sre"
+    wandb_project: str = "vle"
 
     def process_args(self) -> None:
         data_dir = Path(self.data_dir) / "05_model_input"
@@ -77,12 +81,21 @@ def train_model():
 
     # Setup wandb
     wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
-    run = wandb.init(entity="ceb-sre", project="vle", name=args.experiment_name)
+    run = wandb.init(entity=args.wandb_entity, project=args.wandb_project, name=args.experiment_name)
     wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
     # Don't put all the split data on wandb
     d = args.as_dict()
     d.pop("crossval_index_sets")
     wandb.config.update(d)
+
+    # Download checkpoint model if specified
+    if args.wandb_checkpoint_run is not None and args.checkpoint_dir is None:
+        wandb_base_path = f"{args.wandb_entity}/{args.wandb_project}/{args.wandb_checkpoint_run}"
+        checkpoint_path = wandb.restore("model.pt", f"{wandb_base_path}/fold_0/model_0")
+        args.checkpoint_path = str(checkpoint_path.name)
+    elif args.wandb_checkpoint_run is not None and args.checkpoint_dir is not None:
+        ValueError("Can only have one of the following: wandb_checkpoint_run and checkpoint_dir")
+
 
     # Change save_dir to wandb run directory
     args.save_dir = wandb.run.dir
