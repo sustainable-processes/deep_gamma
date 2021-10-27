@@ -48,21 +48,39 @@ class VLETrainArgs(TrainArgs):
     wandb_checkpoint_run: str = None
     wandb_entity: str = "ceb-sre"
     wandb_project: str = "vle"
+    use_molecule_weights: bool = False
 
     def process_args(self) -> None:
         data_dir = Path(self.data_dir) / "05_model_input"
+        # Train
         if self.data_path is None:
             self.data_path = str(data_dir / "train.csv")
-        if self.features_path is None:
+        if self.features_path is None and not self.use_molecule_weights:
             self.features_path = [str(data_dir / "train_features.csv")]
+        elif self.features_path is None and  self.use_molecule_weights:
+            self.features_path = [str(data_dir / "train_temperatures.csv")]
+        if self.use_molecule_weights and self.molecule_weights_path is None:
+            self.molecule_weights_path = str(data_dir / "train_weights.csv")
+
+        # Validation
         if self.separate_val_path is None:
             self.separate_val_path = str(data_dir / "valid_mix.csv")
-        if self.separate_val_features_path is None:
+        if self.separate_val_features_path is None and not self.use_molecule_weights:
             self.separate_val_features_path = [str(data_dir / "valid_mix_features.csv")]
+        elif self.separate_val_features_path is None and self.use_molecule_weights:
+            self.separate_val_features_path = [str(data_dir / "valid_mix_temperatures.csv")]
+        if self.use_molecule_weights and self.separate_val_molecule_weights_path is None:
+            self.separate_val_molecule_weights_path = str(data_dir / "valid_mix_weights.csv")
+
+        # Test
         if self.separate_test_path is None:
             self.separate_test_path = str(data_dir / "test_mix.csv")
-        if self.separate_test_features_path is None:
+        if self.separate_test_features_path is None and not self.use_molecule_weights:
             self.separate_test_features_path = [str(data_dir / "test_mix_features.csv")]
+        elif self.separate_test_features_path is None and  self.use_molecule_weights:
+            self.separate_test_features_path = [str(data_dir / "test_mix_temperatures.csv")]
+        if self.use_molecule_weights and self.separate_test_molecule_weights_path is None:
+            self.separate_test_molecule_weights_path = str(data_dir / "test_mix_weights.csv")
 
         super().process_args()
 
