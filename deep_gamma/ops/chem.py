@@ -88,6 +88,9 @@ class VLETrainArgs(TrainArgs):
             self.data_path = data_dir / "combisolv.txt"
             self.smiles_columns = ["mol solvent", "mol solute"]
             self.target_columns = ["target Gsolv kcal"]
+            self.max_lr = 0.0002
+            self.init_lr = 0.0001
+            self.ffn_hidden_size = 500
 
         super().process_args()
 

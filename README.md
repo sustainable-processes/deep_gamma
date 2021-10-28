@@ -25,7 +25,7 @@ grid run --instance_type p2.xlarge  --dependency_file requirements.txt deep_gamm
 
 Run combisolv model
 ``` bash
-grid run --instance_type g4dn.xlarge  --dependency_file requirements.txt  deep_gamma/ops/chem.py --data_dir data/ --experiment_name combisolv_mpn_shared --artifact_name cosmo_mpn_shared --combisolv
+grid run --instance_type g4dn.xlarge  --dependency_file requirements.txt  deep_gamma/ops/chem.py --data_dir data/ --experiment_name combisolv_mpn_shared --artifact_name cosmo_mpn_shared --batch_size 50 --combisolv
 ```
 
 * Notes on instances
