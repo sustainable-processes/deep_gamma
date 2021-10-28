@@ -1,27 +1,13 @@
 import wandb
-
-import os
-import numpy as np
-from pathlib import Path
-from typing import Optional, List
-from typing_extensions import Literal
-
-
-from collections import defaultdict
-import csv
-import json
-from logging import Logger
-import os
-from typing import Callable, Dict, List, Tuple
-from functools import partialmethod
-import numpy as np
-import pandas as pd
-from pathlib import Path
-import json
-
 from chemprop.args import TrainArgs, Metric
 from chemprop.train.cross_validate import cross_validate
 from chemprop.train.run_training import run_training
+
+from typing import Optional, List
+from typing_extensions import Literal
+import os
+from pathlib import Path
+
 
 
 class VLETrainArgs(TrainArgs):
@@ -102,6 +88,15 @@ class VLETrainArgs(TrainArgs):
         #     self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
         #     self.split_type = "index_predetermined"
 
+def get_grid_info()->dict:
+    """Information about Grid.ai run if available"""
+    d = {}
+    d["grid_experiment_name"] = os.environ.get("GRID_EXPERIMENT_NAME")
+    d["grid_experiment_id"] = os.environ.get("GRID_EXPERIMENT_ID")
+    d["grid_instance_type"] = os.environ.get("GRID_INSTANCE_TYPE")
+    d["grid_user"] = os.environ.get("GRID_USER_ID")
+    d["grid_cluster_id"] = os.environ.get("GRID_CLUSTER_ID")
+    return d
 
 def train_model():
     # Get args
@@ -114,6 +109,8 @@ def train_model():
     # Don't put all the split data on wandb
     d = args.as_dict()
     d.pop("crossval_index_sets")
+    # Add grid information if available
+    d.update(get_grid_info())
     wandb.config.update(d)
 
     # Download checkpoint model if specified
