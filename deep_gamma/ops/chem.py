@@ -36,9 +36,10 @@ class VLETrainArgs(TrainArgs):
     wandb_project: str = "vle"
     use_molecule_weights: bool = False
     combisolv: bool = False
+    polynomial: bool = False
 
     def process_args(self) -> None:
-        if not self.combisolv:
+        if not self.combisolv and not self.polynomial:
             data_dir = Path(self.data_dir) / "05_model_input"
             # Train
             if self.data_path is None:
@@ -69,6 +70,8 @@ class VLETrainArgs(TrainArgs):
                 self.separate_test_features_path = [str(data_dir / "test_mix_temperatures.csv")]
             if self.use_molecule_weights and self.separate_test_molecule_weights_path is None:
                 self.separate_test_molecule_weights_path = str(data_dir / "test_mix_weights.csv")
+        elif self.polynomial:
+            self.target_columns = ['c0_0', 'c0_1', 'c1_0', 'c1_1', 'c2_0', 'c2_1', 'c3_0', 'c3_1', 'c4_0', 'c4_1']
         else:
             data_dir = Path(self.data_dir)
             self.data_path = data_dir / "combisolv.txt"

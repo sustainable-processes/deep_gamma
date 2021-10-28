@@ -20,7 +20,7 @@ grid datastore create --source model_input.tar.gz --name cosmo-gammas
 
 Run base COSMO model
 ```bash
-grid run --instance_type p2.xlarge  --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:cosmo-gammas:9--experiment_name cosmo_base --artifact_name cosmo_base
+grid run --instance_type p2.xlarge  --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:cosmo-gammas:9 --experiment_name cosmo_base --artifact_name cosmo_base
 ```
 
 Run combisolv model
