@@ -119,7 +119,7 @@ def train_model():
     # Download checkpoint model if specified
     if args.wandb_checkpoint_run is not None and args.checkpoint_dir is None:
         wandb_base_path = f"{args.wandb_entity}/{args.wandb_project}/{args.wandb_checkpoint_run}"
-        checkpoint_path = wandb.restore("model.pt", f"{wandb_base_path}/fold_0/model_0")
+        checkpoint_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
         args.checkpoint_path = str(checkpoint_path.name)
     elif args.wandb_checkpoint_run is not None and args.checkpoint_dir is not None:
         ValueError("Can only have one of the following: wandb_checkpoint_run and checkpoint_dir")
