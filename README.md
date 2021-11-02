@@ -1,11 +1,16 @@
 ## Local python
 COSMO
-```python 
+```bash 
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base --artifact_name cosmo_base
 ```
 
+COSMO polynomial
+```bash 
+python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_polynomial --artifact_name cosmo_polynomial --polynomial
+```
+
 Combisolv
-```python 
+```bash 
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base --artifact_name cosmo_base --combisolv
 ```
 
