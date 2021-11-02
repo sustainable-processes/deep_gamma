@@ -20,7 +20,7 @@ class VLETrainArgs(TrainArgs):
     dataset_type: Literal["regression", "classification", "multiclass"] = "regression"
     smiles_columns: List[str] = ["smiles_1", "smiles_2"]
     target_columns: List[str] = ["ln_gamma_1", "ln_gamma_2"]
-    epochs: int = 100
+    epochs: int = 5
     num_workers: int = 3
     cache_cutoff: int = int(1e9)
     save_preds: bool = True
@@ -163,12 +163,14 @@ def train_model():
         wandb.save(str(file), base_path=str(save_dir))
 
     # Run training
-    cross_validate(args=args, train_func=run_training)
-
-    # Save model as an artifact
-    artifact = wandb.Artifact(args.artifact_name, type="model")
-    artifact.add_file(save_dir / "fold_0/model_0/model.pt")
-    run.log_artifact(artifact)
+    try:
+        cross_validate(args=args, train_func=run_training)
+        # # Save model as an artifact
+        # artifact = wandb.Artifact(args.artifact_name, type="model")
+        # artifact.add_file(save_dir / "fold_0/model_0/model.pt")
+        # run.log_artifact(artifact)
+    finally:
+        pass
 
 
 if __name__ == "__main__":
