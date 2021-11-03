@@ -1,4 +1,11 @@
 program: deep_gamma/ops/chem.py
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - "--data_dir"
+  - "grid:cosmo-gammas:10"
+  - ${args}
 entity: ceb-sre
 project: vle
 parameters:
