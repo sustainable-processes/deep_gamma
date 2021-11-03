@@ -42,6 +42,20 @@ def parity_plot(df, target_columns):
         axes[i - 1].set_title(target_column, fontsize=16)
     return fig, axes
 
+def absolute_error_composition(df: pd.DataFrame, target_columns: List[str]):
+    fig, axes = plt.subplots(1,2, figsize=(10,5))
+    fig.subplots_adjust(wspace=0.2)
+    big_df_errors = df.dropna().copy().reset_index()
+    for i, target_column in enumerate(target_columns):
+        abs_difference = (df.dropna()[f"ln_gamma_{i}"]-df.dropna()[f"ln_gamma_{i}_pred"]).abs()
+        big_df_errors[f"abs_error_{i}"]= abs_difference.to_numpy()
+        axes[i-1].scatter(df.dropna()["x(1)"], abs_difference, alpha=0.1, c = "#025b66")
+        axes[i-1].set_xlabel("x(1)")
+        axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$")
+        axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
+
+    fig.savefig(f"../figures/big_vle_absolute_error.png", dpi=300)
+
 
 class VLEPredictArgs(PredictArgs):
     skip_prediction: bool = False
