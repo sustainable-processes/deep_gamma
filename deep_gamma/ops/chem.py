@@ -11,8 +11,7 @@ from pathlib import Path
 
 
 class VLETrainArgs(TrainArgs):
-    experiment_name: str
-    artifact_name: str
+    experiment_name: str = None
     data_dir: Optional[str] = "data/"
     data_path: Optional[str] = None
     lr_scheduler: str = "Noam"
@@ -20,7 +19,7 @@ class VLETrainArgs(TrainArgs):
     dataset_type: Literal["regression", "classification", "multiclass"] = "regression"
     smiles_columns: List[str] = ["smiles_1", "smiles_2"]
     target_columns: List[str] = ["ln_gamma_1", "ln_gamma_2"]
-    epochs: int = 5
+    epochs: int = 20
     num_workers: int = 3
     cache_cutoff: int = int(1e9)
     save_preds: bool = True
@@ -103,13 +102,6 @@ class VLETrainArgs(TrainArgs):
 
         super().process_args()
 
-        # if self.split_type == "custom":
-        #     train_indices = np.loadtxt(data_dir / "train_indices.txt").astype(int)
-        #     valid_indices = np.loadtxt(data_dir / "valid_mix_indices.txt").astype(int)
-        #     test_indices = []
-
-        #     self._crossval_index_sets = [[train_indices, valid_indices, test_indices]]
-        #     self.split_type = "index_predetermined"
 
 def get_grid_info()->dict:
     """Information about Grid.ai run if available"""
@@ -126,6 +118,11 @@ def train_model():
     args = VLETrainArgs().parse_args()
 
     # Setup wandb
+    grid_info = get_grid_info()
+    if args.experiment_name is None and grid_info["grid_experiment_name"] is not None:
+        args.experiment_name = grid_info["grid_experiment_name"]
+    elif args.experiment_name is None:
+        args.experiment_name = "chem"
     wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
     run = wandb.init(entity=args.wandb_entity, project=args.wandb_project, name=args.experiment_name)
     wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
@@ -146,7 +143,7 @@ def train_model():
     d = args.as_dict()
     d.pop("crossval_index_sets")
     # Add grid information if available
-    d.update(get_grid_info())
+    d.update(grid_info)
     wandb.config.update(d)
 
     # Change save_dir to wandb run directory
@@ -163,14 +160,7 @@ def train_model():
         wandb.save(str(file), base_path=str(save_dir))
 
     # Run training
-    try:
-        cross_validate(args=args, train_func=run_training)
-        # # Save model as an artifact
-        # artifact = wandb.Artifact(args.artifact_name, type="model")
-        # artifact.add_file(save_dir / "fold_0/model_0/model.pt")
-        # run.log_artifact(artifact)
-    finally:
-        pass
+    cross_validate(args=args, train_func=run_training)
 
 
 if __name__ == "__main__":
