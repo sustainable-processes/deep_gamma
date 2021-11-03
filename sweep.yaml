@@ -4,7 +4,7 @@ command:
   - ${interpreter}
   - ${program}
   - "--data_dir"
-  - "grid:cosmo-gammas:10"
+  - "/datastores/cosmo-gammas"
   - ${args}
 entity: ceb-sre
 project: vle
