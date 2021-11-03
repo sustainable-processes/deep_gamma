@@ -48,6 +48,13 @@ To get pretrained model, add this cli option
 --wandb_checkpoint_frzn_run 2532qdqg
 ```
 
+Running hyperparameter sweep
+1. Start wandb sweeep `wandb sweep sweep.yaml`
+2. Start agent on grid:
+    ```bash
+    grid run --instance_type p2.xlarge  --dependency_file requirements.txt --datastore_name cosmo-gammas --datastore_version 10  --use_spot run_wandb_agent.sh
+    ```
+
 * Notes on instances
     - g4dn.xlarge worked well for combisolv data
     - p2.xlarge is the cheapest machine on grid that has enough RAM for COSMO (61GB)
