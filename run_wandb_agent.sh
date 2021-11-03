@@ -13,5 +13,6 @@ while [ $# -gt 0 ]; do
     shift
 done
 
+pip install -U wandb
 wandb login eddd91debd4aeb24f212695d6c663f504fdb7e3c
 wandb agent -p vle -e ceb-sre $sweep_id
