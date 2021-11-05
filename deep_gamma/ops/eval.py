@@ -86,7 +86,7 @@ def evaluate():
     # Loop through different validation and test sets.
     sets = [ "valid_cont", "valid_mix", "valid_indp", "test_indp", "test_mix"]
     for predict_set in sets:
-        
+        # Set t
         if not args.skip_prediction:
             # Make predictions
             preds = make_predictions(args)

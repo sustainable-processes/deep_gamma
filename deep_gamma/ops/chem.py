@@ -20,7 +20,7 @@ class VLETrainArgs(TrainArgs):
     smiles_columns: List[str] = ["smiles_1", "smiles_2"]
     target_columns: List[str] = ["ln_gamma_1", "ln_gamma_2"]
     epochs: int = 20
-    num_workers: int = 3
+    num_workers: int = 8
     cache_cutoff: int = int(1e9)
     save_preds: bool = True
     extra_metrics: List[str] = ["r2", "mae"]
