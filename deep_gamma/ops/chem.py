@@ -26,10 +26,12 @@ class VLETrainArgs(TrainArgs):
     extra_metrics: List[str] = ["r2", "mae"]
     metric: Metric = "mse"
     mpn_shared: bool = True
-    depth: int = 4
+    depth: int = 3 # Hyperparameter tuning indicates that this depth works better
+    max_lr: float = 0.006 # Found via hyperparameter tuning
     hidden_size: int = 200
+    ffn_hidden_size: int = 380 # Found via hyperparameter tuning
     activation: str = "LeakyReLU"
-    batch_size: int = 1000
+    batch_size: int = 4550
     wandb_checkpoint_run: str = None
     wandb_checkpoint_frzn_run: str = None
     wandb_entity: str = "ceb-sre"
