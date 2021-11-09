@@ -7,7 +7,7 @@ from typing import Optional, List
 from typing_extensions import Literal
 import os
 from pathlib import Path
-
+import subprocess
 
 
 class VLETrainArgs(TrainArgs):
@@ -116,6 +116,11 @@ def get_grid_info()->dict:
     return d
 
 def train_model():
+    # Update wandb
+    bashCommand = "pip install -U wandb"
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    process.communicate()
+
     # Get args
     args = VLETrainArgs().parse_args()
 
@@ -126,7 +131,7 @@ def train_model():
     elif args.experiment_name is None:
         args.experiment_name = "chem"
     wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
-    run = wandb.init(entity=args.wandb_entity, project=args.wandb_project, name=args.experiment_name)
+    wandb.init(entity=args.wandb_entity, project=args.wandb_project, name=args.experiment_name)
     wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
 
     # Download checkpoint model if specified
