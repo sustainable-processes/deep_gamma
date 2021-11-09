@@ -117,7 +117,7 @@ def get_grid_info()->dict:
 
 def train_model():
     # Update wandb
-    bashCommand = "pip install -U wandb"
+    bashCommand = "pip install wandb==0.12.3"
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     process.communicate()
 
