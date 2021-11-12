@@ -1,3 +1,4 @@
+from chemprop.models import model
 from chemprop.train import make_predictions
 from chemprop.args import PredictArgs
 import matplotlib.pyplot as plt
@@ -9,6 +10,8 @@ from rdkit import Chem
 from pathlib import Path
 from typing import List, Optional
 import wandb
+
+from chemprop.args import CommonArgs
 
 
 def parity_plot(df: pd.DataFrame, target_columns: List[str]):
@@ -55,61 +58,100 @@ def absolute_error_composition(df: pd.DataFrame):
         axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$")
         axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
     return fig, axes
+
+def calculate_activity_coefficients_polynomial(preds):
+    pass
     
-class VLEPredictArgs(PredictArgs):
+class VLEPredictArgs(CommonArgs):
+    """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
     data_dir: Optional[str] = "data/"
     skip_prediction: bool = False
-    target_columns: List[str]
+    smiles_columns: List[str] = ["smiles_1", "smiles_2"]
+    number_of_molecules: int = 2
     drop_na: bool = False
-    wandb_checkpoint_run: str = None
-    wandb_entity: str = "ceb-sre"
-    wandb_project: str = "vle"
+    drop_extra_columns: bool = False
+    """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
+    ensemble_variance: bool = False
+    """Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
+    individual_ensemble_predictions: bool = False
+    """Whether to return the predictions made by each of the individual models rather than the average of the ensemble"""
+    polynomial: bool = False
+
+    @property
+    def ensemble_size(self) -> int:
+        """The number of models in the ensemble."""
+        return len(self.checkpoint_paths)
 
     def process_args(self) -> None:
-        self.data_dir = Path(self.data_dir) / "05_model_input"
-        # Download checkpoint model if specified
-        if self.wandb_checkpoint_run is not None and self.checkpoint_dir is None:
-            wandb_base_path = f"{self.wandb_entity}/{self.wandb_project}/{self.wandb_checkpoint_run}"
-            checkpoint_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
-            self.checkpoint_path = str(checkpoint_path.name)
-        elif self.wandb_checkpoint_run is not None and self.checkpoint_dir is not None:
-            ValueError("Can only have one of the following: wandb_checkpoint_run and checkpoint_dir")
+        self.data_input_dir = Path(self.data_dir) / "05_model_input"
+        self.output_path = Path(self.data_dir) / "07_model_output"
+        self.reporting_dir = Path(self.data_dir) / "08_reporting"
 
-        super().process_args()
+        super().process_args( )
+
 
 
 def evaluate():
     # Arguments
     args = VLEPredictArgs().parse_args()
-    
+
+    # Download models
+    model_paths = {}
+    model_run_ids = {
+        "cosmo_base": "zn669uuj",
+        "cosmo_base_pretrained": "1tsddx25",
+        # "cosmo_polynomial_pretrained": "3isfpnw2",
+        # "cosmo_polynomial": "3nd8gspj"
+    }
+    for name, run_id in model_run_ids.items():
+        if "polynomial" in name:
+            path = "fold_0/model_0/model.pt" 
+        else:
+            path = "model_0/model.pt"
+        wandb_base_path = f"ceb-sre/vle/{run_id}"
+        checkpoint_path = wandb.restore(path, run_path=wandb_base_path)
+        model_paths[name] = str(checkpoint_path.name)
 
     # Loop through different validation and test sets.
-    sets = [ "valid_cont", "valid_mix", "valid_indp", "test_indp", "test_mix"]
-    for predict_set in sets:
-        # Set t
-        if not args.skip_prediction:
+    sets = ["valid_cont", "valid_mix", "valid_indp", "test_indp", "test_mix"]
+    for model_name, model_path in model_paths.items():
+        args.checkpoint_paths = [model_path]
+        for predict_set in sets:
+            # Paths
+            args.test_path = args.data_input_dir /  f"{predict_set}.csv"
+            if "polynomial" in model_name:
+                args.features_path = [args.data_input_dir / f"{predict_set}_features.csv"]
+            else:
+                args.features_path = [args.data_input_dir / f"{predict_set}_features.csv"]
+            args.preds_path = args.output_path / f"{predict_set}_preds.csv"
+ 
             # Make predictions
-            preds = make_predictions(args)
+            if not args.skip_prediction:
+                # Make predictions
+                preds = make_predictions(args)
 
-        # Read back in test predictions data
-        preds = pd.read_csv(args.preds_path)
-        preds = preds.rename(columns=lambda t: f"{t}_pred")
-        truth = pd.read_csv(args.test_path)
-        if len(args.features_path) > 0:
-            features = pd.read_csv(args.features_path[0])
-            big_df = pd.concat([truth, features, preds], axis=1)
-        else:
-            big_df = pd.concat([truth, preds], axis=1)
+            if "polynomial" in model_name:
+                calculate_activity_coefficients_polynomial(preds)
 
-        # Parity plot
-        if args.drop_na:
-            big_df = big_df.dropna()
-        fig, _ = parity_plot(big_df, args.target_columns)
-        fig.savefig(Path(args.preds_path).parent / "parity_plot", dpi=300)
+            # Read back in test predictions data
+            preds = pd.read_csv(args.preds_path)
+            preds = preds.rename(columns=lambda t: f"{t}_pred")
+            truth = pd.read_csv(args.test_path)
+            if len(args.features_path) > 0:
+                features = pd.read_csv(args.features_path[0])
+                big_df = pd.concat([truth, features, preds], axis=1)
+            else:
+                big_df = pd.concat([truth, preds], axis=1)
 
-        # Absolute error vs composition
-        fig, _ = absolute_error_composition(big_df)
-        fig.savefig(f"../figures/big_vle_absolute_error.png", dpi=300)
+            # Parity plot
+            if args.drop_na:
+                big_df = big_df.dropna()
+            fig, _ = parity_plot(big_df, args.target_columns)
+            fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_parity_plot.png", dpi=300)
+
+            # Absolute error vs composition
+            fig, _ = absolute_error_composition(big_df)
+            fig.savefig(args.reporting_dir / f"{predict_set}_absolute_error_vs_composition.png", dpi=300)
 
 
 if __name__ == "__main__":

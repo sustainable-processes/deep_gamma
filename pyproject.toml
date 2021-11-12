@@ -26,7 +26,7 @@ wandb = "^0.12.4"
 tensorboardX = "^2.4"
 dagster-shell = "^0.12.15"
 tensorboard = "^2.7.0"
-chemprop = {path = "chemprop"}
+chemprop = {path = "chemprop", develop = true}
 
 
 [tool.poetry.dev-dependencies]
