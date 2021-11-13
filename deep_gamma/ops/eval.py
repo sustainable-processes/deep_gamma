@@ -103,6 +103,7 @@ def evaluate():
         # "cosmo_polynomial_pretrained": "3isfpnw2",
         # "cosmo_polynomial": "3nd8gspj"
     }
+    wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
     for name, run_id in model_run_ids.items():
         if "polynomial" in name:
             path = "fold_0/model_0/model.pt" 
