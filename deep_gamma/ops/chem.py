@@ -78,19 +78,19 @@ class VLETrainArgs(TrainArgs):
             if self.data_path is None:
                 self.data_path = str(data_dir / "train_polynomial.csv")
             if self.features_path is None:
-                self.features_path = [str(data_dir / "train_polynomial_temperatures.csv")]
+                self.features_path = [str(data_dir / "train_polynomial_temperature.csv")]
 
             # Validation
             if self.separate_val_path is None:
                 self.separate_val_path = str(data_dir / "valid_mix_polynomial.csv")
             if self.separate_val_features_path is None:
-                self.separate_val_features_path = [str(data_dir / "valid_mix_polynomial_temperatures.csv")]
+                self.separate_val_features_path = [str(data_dir / "valid_mix_polynomial_temperature.csv")]
 
             # Test
             if self.separate_test_path is None:
                 self.separate_test_path = str(data_dir / "test_mix_polynomial.csv")
             if self.separate_test_features_path is None:
-                self.separate_test_features_path = [str(data_dir / "test_mix_polynomial_temperatures.csv")]
+                self.separate_test_features_path = [str(data_dir / "test_mix_polynomial_temperature.csv")]
 
             self.target_columns = ['c0_0', 'c0_1', 'c1_0', 'c1_1', 'c2_0', 'c2_1', 'c3_0', 'c3_1', 'c4_0', 'c4_1']
         else:
@@ -117,9 +117,9 @@ def get_grid_info()->dict:
 
 def train_model():
     # Update wandb
-    bashCommand = "pip install wandb==0.12.3"
-    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-    process.communicate()
+    # bashCommand = "pip install wandb==0.12.3"
+    # process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    # process.communicate()
 
     # Get args
     args = VLETrainArgs().parse_args()
