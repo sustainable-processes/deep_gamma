@@ -13,9 +13,10 @@ from typing import List, Optional
 import wandb
 import os
 from chemprop.args import CommonArgs
+import json
 
 
-def parity_plot(df: pd.DataFrame, target_columns: List[str]):
+def parity_plot(df: pd.DataFrame, target_columns: List[str], format_gammas: bool = False, scores: dict = None):
     fig, axes = plt.subplots(1, len(target_columns), figsize=(5*len(target_columns), 5))
     if type(axes) != np.ndarray:
         axes = [axes]
@@ -26,8 +27,12 @@ def parity_plot(df: pd.DataFrame, target_columns: List[str]):
         axes[i - 1].scatter(
             df[target_column], df[f"{target_column}_pred"], alpha=0.01, c=c
         )
-        axes[i - 1].set_xlabel(f"Measured {target_column}")
-        axes[i - 1].set_ylabel(f"Predicted {target_column}")
+        if not format_gammas:
+            axes[i - 1].set_xlabel(f"Measured {target_column}")
+            axes[i - 1].set_ylabel(f"Predicted {target_column}")
+        else:
+            axes[i - 1].set_xlabel(f"Measured $\ln \gamma_{i}$")
+            axes[i - 1].set_ylabel(f"Predicted $\ln \gamma_{i}$")
         max_val = df[target_column].max()
         min_val = df[target_column].min()
 
@@ -35,17 +40,26 @@ def parity_plot(df: pd.DataFrame, target_columns: List[str]):
         axes[i - 1].plot([min_val, max_val], [min_val, max_val], "--", c="grey")
 
         # Scores
+        if scores is not None:
+            for i, target_column in enumerate(target_columns):
+                rmse_patch = mpatches.Patch(label="RMSE = {:.3f}".format(scores[f"{target_column}_rmse"]), color=c)
+                mae_patch = mpatches.Patch(label="MAE = {:.3f}".format(scores[f"{target_column}_mae"]), color=c)
+                axes[i - 1].legend(handles=[rmse_patch, mae_patch])
+
+    return fig, axes
+
+def calculate_scores(df: pd.DataFrame, target_columns: List[str]):
+    scores = {}
+    for target_column in target_columns:
         rmse = mean_squared_error(df[target_column], df[f"{target_column}_pred"]) ** (
             0.5
         )
+        scores[f"{target_column}_rmse"] = rmse
+    for target_column in target_columns:
         mae = mean_absolute_error(df[target_column], df[f"{target_column}_pred"])
-        rmse_patch = mpatches.Patch(label="RMSE = {:.3f}".format(rmse), color=c)
-        mae_patch = mpatches.Patch(label="MAE = {:.3f}".format(mae), color=c)
-        axes[i - 1].legend(handles=[rmse_patch, mae_patch])
+        scores[f"{target_column}_mae"] = mae
+    return scores
 
-        # Title
-        axes[i - 1].set_title(target_column, fontsize=16)
-    return fig, axes
 
 def absolute_error_composition(df: pd.DataFrame):
     fig, axes = plt.subplots(1,2, figsize=(10,5))
@@ -78,6 +92,8 @@ class VLEPredictArgs(CommonArgs):
     """Whether to return the predictions made by each of the individual models rather than the average of the ensemble"""
     polynomial: bool = False
     num_workers: int = 4
+    results_path: str = "results"
+    format_gammas: bool = False
 
     @property
     def ensemble_size(self) -> int:
@@ -86,13 +102,16 @@ class VLEPredictArgs(CommonArgs):
 
     def process_args(self) -> None:
         self.data_input_dir = Path(self.data_dir) / "05_model_input"
-        results_path = Path("results/")
-        os.makedirs(results_path, exist_ok=True)
-        self.output_path = results_path / "07_model_output"
-        os.makedirs(self.output_path, exist_ok=True)
-        self.reporting_dir = results_path / "08_reporting"
-        os.makedirs(self.reporting_dir, exist_ok=True)
-        super().process_args( )
+        self.results_path = Path(self.results_path)
+        if not self.results_path.exists():
+            os.makedirs(self.results_path)
+        self.output_path = self.results_path / "07_model_output"
+        if not self.output_path.exists():
+            os.makedirs(self.output_path)
+        self.reporting_dir = self.results_path / "08_reporting"
+        if not self.reporting_dir.exists():
+            os.makedirs(self.reporting_dir)
+        super().process_args()
 
 
 
@@ -108,18 +127,22 @@ def evaluate():
         # "cosmo_polynomial_pretrained": "3isfpnw2",
         # "cosmo_polynomial": "3nd8gspj"
     }
-    wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
-    for name, run_id in model_run_ids.items():
-        if "polynomial" in name:
-            path = "fold_0/model_0/model.pt" 
-        else:
-            path = "model_0/model.pt"
-        wandb_base_path = f"ceb-sre/vle/{run_id}"
-        checkpoint_path = wandb.restore(path, run_path=wandb_base_path)
-        model_paths[name] = str(checkpoint_path.name)
+    if not args.skip_prediction:
+        wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
+        for name, run_id in model_run_ids.items():
+            if "polynomial" in name:
+                path = "fold_0/model_0/model.pt" 
+            else:
+                path = "model_0/model.pt"
+            wandb_base_path = f"ceb-sre/vle/{run_id}"
+            checkpoint_path = wandb.restore(path, run_path=wandb_base_path, root=args.output_path / name)
+            model_paths[name] = str(checkpoint_path.name)
+    else:
+        model_paths = model_run_ids
 
     # Loop through different validation and test sets.
     sets = ["valid_cont", "valid_mix", "valid_indp", "test_indp", "test_mix"]
+    all_scores = []
     for model_name, model_path in model_paths.items():
         args.checkpoint_paths = [model_path]
         for predict_set in sets:
@@ -141,6 +164,8 @@ def evaluate():
 
             # Read back in test predictions data
             preds = pd.read_csv(args.preds_path)
+            if args.skip_prediction:
+                args.target_columns = [col for col in preds.columns if col not in args.smiles_columns]
             preds = preds.rename(columns=lambda t: f"{t}_pred")
             truth = pd.read_csv(args.test_path)
             if len(args.features_path) > 0:
@@ -149,15 +174,35 @@ def evaluate():
             else:
                 big_df = pd.concat([truth, preds], axis=1)
 
-            # Parity plot
             if args.drop_na:
                 big_df = big_df.dropna()
-            fig, _ = parity_plot(big_df, args.target_columns)
+
+            # Calculate scores
+            scores = calculate_scores(big_df, args.target_columns)
+            scores.update({
+                "model_name": model_name,
+                "holdout_set": predict_set
+            })
+            all_scores.append(scores)
+            with open(args.output_path / f"{model_name}_{predict_set}_scores.json", "w") as f:
+                json.dump(scores, f)
+
+            #Parity plot
+            fig, _ = parity_plot(big_df, args.target_columns, format_gammas=args.format_gammas)
             fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_parity_plot.png", dpi=300)
 
             # Absolute error vs composition
             fig, _ = absolute_error_composition(big_df)
-            fig.savefig(args.reporting_dir / f"{predict_set}_absolute_error_vs_composition.png", dpi=300)
+            fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_absolute_error_vs_composition.png", dpi=300)
+    
+    scores_df = pd.DataFrame(all_scores).round(4)
+    scores_df = scores_df.sort_values(by="holdout_set").set_index([ "holdout_set", "model_name"])
+    scores_df.to_csv(args.reporting_dir / "scores.csv",)
+    latex_table = scores_df.to_latex()
+    with open(args.reporting_dir / "latex_table.txt", "w") as f:
+        f.write(latex_table)
+
+
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamm
 
 Run polynomial model
 ``` bash
-grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:cosmo-gammas:10 --experiment_name cosmo_polynomial --polynomial
+grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:cosmo-gammas:12 --experiment_name cosmo_polynomial --polynomial
 ```
 
 Run COSMO model with molecule weights
