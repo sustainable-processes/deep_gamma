@@ -7,7 +7,9 @@ from typing import Optional, List
 from typing_extensions import Literal
 import os
 from pathlib import Path
-import subprocess
+from subprocess import call
+
+
 
 
 class VLETrainArgs(TrainArgs):
@@ -116,11 +118,6 @@ def get_grid_info()->dict:
     return d
 
 def train_model():
-    # Update wandb
-    # bashCommand = "pip install wandb==0.12.3"
-    # process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-    # process.communicate()
-
     # Get args
     args = VLETrainArgs().parse_args()
 
@@ -171,4 +168,8 @@ def train_model():
 
 
 if __name__ == "__main__":
+    def upgrade(packages):
+        for package in packages:
+            call("pip install --upgrade " + package, shell=True)
+    upgrade(["wandb"])
     train_model()
