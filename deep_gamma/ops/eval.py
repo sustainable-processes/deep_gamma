@@ -1,3 +1,4 @@
+from unittest import result
 from chemprop.models import model
 from chemprop.train import make_predictions
 from chemprop.args import PredictArgs
@@ -10,7 +11,7 @@ from rdkit import Chem
 from pathlib import Path
 from typing import List, Optional
 import wandb
-
+import os
 from chemprop.args import CommonArgs
 
 
@@ -84,8 +85,9 @@ class VLEPredictArgs(CommonArgs):
 
     def process_args(self) -> None:
         self.data_input_dir = Path(self.data_dir) / "05_model_input"
-        self.output_path = Path(self.data_dir) / "07_model_output"
-        self.reporting_dir = Path(self.data_dir) / "08_reporting"
+        results_path = os.makedirs("results/", exist_ok=True)
+        self.output_path = results_path / "07_model_output"
+        self.reporting_dir = results_path/ "08_reporting"
 
         super().process_args( )
 
