@@ -87,8 +87,9 @@ class VLEPredictArgs(CommonArgs):
         self.data_input_dir = Path(self.data_dir) / "05_model_input"
         results_path = os.makedirs("results/", exist_ok=True)
         self.output_path = results_path / "07_model_output"
+        os.makedirs(self.output_path, exist_ok=True)
         self.reporting_dir = results_path/ "08_reporting"
-
+        os.makedirs(self.reporting_dir, exist_ok=True)
         super().process_args( )
 
 
