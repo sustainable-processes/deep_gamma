@@ -168,8 +168,4 @@ def train_model():
 
 
 if __name__ == "__main__":
-    def upgrade(packages):
-        for package in packages:
-            call("pip install --upgrade " + package, shell=True)
-    upgrade(["wandb"])
     train_model()
