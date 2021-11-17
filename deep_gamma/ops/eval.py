@@ -74,8 +74,18 @@ def absolute_error_composition(df: pd.DataFrame):
         axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
     return fig, axes
 
-def calculate_activity_coefficients_polynomial(preds):
-    pass
+
+def calculate_activity_coefficients_polynomial(
+    preds: pd.DataFrame, order=4
+):
+    # c1_0 is parameter 1 (zero-indexed) for molecule 1
+    for i in range(2):
+        preds[f"ln_gamma_{i+1}_pred"] = 0
+        for j in range(order+1):
+            x = preds["x(1)"] if i == 0 else 1.0-preds["x(1)"]
+            preds[f"ln_gamma_{i+1}_pred"] += preds[f"c{j}_{i}_pred"]*x**j
+    return preds
+
     
 class VLEPredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
@@ -122,10 +132,10 @@ def evaluate():
     # Download models
     model_paths = {}
     model_run_ids = {
-        "cosmo_base": "zn669uuj",
-        "cosmo_base_pretrained": "1tsddx25",
-        # "cosmo_polynomial_pretrained": "3isfpnw2",
-        # "cosmo_polynomial": "3nd8gspj"
+        # "cosmo_base": "zn669uuj",
+        # "cosmo_base_pretrained": "1tsddx25",
+        "cosmo_polynomial_pretrained": "3ca6vl9b",
+        "cosmo_polynomial": "3ca6vl9b"
     }
     if not args.skip_prediction:
         wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
@@ -147,20 +157,19 @@ def evaluate():
         args.checkpoint_paths = [model_path]
         for predict_set in sets:
             # Paths
-            args.test_path = args.data_input_dir /  f"{predict_set}.csv"
             if "polynomial" in model_name:
-                args.features_path = [args.data_input_dir / f"{predict_set}_features.csv"]
+                args.test_path = args.data_input_dir /  f"{predict_set}_polynomial.csv"
+                args.features_path = [args.data_input_dir / f"{predict_set}_polynomial_temperature.csv"]
+                
             else:
+                args.test_path = args.data_input_dir /  f"{predict_set}.csv"
                 args.features_path = [args.data_input_dir / f"{predict_set}_features.csv"]
-            args.preds_path = args.output_path / f"{predict_set}_preds.csv"
+            args.preds_path = args.output_path / f"{model_name}_{predict_set}_preds.csv"
  
             # Make predictions
             if not args.skip_prediction:
                 # Make predictions
                 preds = make_predictions(args)
-
-            if "polynomial" in model_name:
-                calculate_activity_coefficients_polynomial(preds)
 
             # Read back in test predictions data
             preds = pd.read_csv(args.preds_path)
@@ -174,6 +183,14 @@ def evaluate():
             else:
                 big_df = pd.concat([truth, preds], axis=1)
 
+            # Calculate polynomial activity coefficients if needed
+            if "polynomial" in model_name:
+                test_df = pd.read_csv(args.data_input_dir /  f"{predict_set}.csv")
+                features_df = pd.read_csv(args.data_input_dir / f"{predict_set}_features.csv")
+                df = pd.concat([test_df, features_df], axis=1)
+                big_df = df.merge(big_df, on=["smiles_1", "smiles_2", "temperature (K)"], how='left')
+                big_df = calculate_activity_coefficients_polynomial(big_df)
+                
             if args.drop_na:
                 big_df = big_df.dropna()
 
@@ -195,6 +212,7 @@ def evaluate():
             fig, _ = absolute_error_composition(big_df)
             fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_absolute_error_vs_composition.png", dpi=300)
     
+    # Write out scores in publication format
     scores_df = pd.DataFrame(all_scores).round(4)
     scores_df = scores_df.sort_values(by="holdout_set").set_index([ "holdout_set", "model_name"])
     scores_df.to_csv(args.reporting_dir / "scores.csv",)

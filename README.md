@@ -14,6 +14,9 @@ Combisolv
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base --artifact_name cosmo_base --combisolv
 ```
 
+Evaluation
+
+
 ## Grid
 
 Run combisolv model
@@ -54,6 +57,12 @@ Running hyperparameter sweep
     ```bash
     grid run --instance_type p2.xlarge  --dependency_file requirements.txt --datastore_name cosmo-gammas --datastore_version 10  --use_spot run_wandb_agent.sh
     ```
+
+Evaluation
+
+```bash
+grid run --instance_type g4dn.xlarge --dependency_file requirements.txt deep_gamma/ops/eval.py --drop_na --data_dir grid:cosmo-gammas:12
+```
 
 * Notes on instances
     - g4dn.xlarge worked well for combisolv data
