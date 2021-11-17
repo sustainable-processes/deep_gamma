@@ -91,6 +91,7 @@ class VLEPredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
     data_dir: Optional[str] = "data/"
     skip_prediction: bool = False
+    skip_figures: bool = False
     smiles_columns: List[str] = ["smiles_1", "smiles_2"]
     number_of_molecules: int = 2
     drop_na: bool = False
@@ -135,7 +136,7 @@ def evaluate():
         # "cosmo_base": "zn669uuj",
         # "cosmo_base_pretrained": "1tsddx25",
         "cosmo_polynomial_pretrained": "3ca6vl9b",
-        "cosmo_polynomial": "3ca6vl9b"
+        "cosmo_polynomial": "39g74a7c"
     }
     if not args.skip_prediction:
         wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
@@ -190,12 +191,12 @@ def evaluate():
                 df = pd.concat([test_df, features_df], axis=1)
                 big_df = df.merge(big_df, on=["smiles_1", "smiles_2", "temperature (K)"], how='left')
                 big_df = calculate_activity_coefficients_polynomial(big_df)
-                
+
             if args.drop_na:
                 big_df = big_df.dropna()
 
             # Calculate scores
-            scores = calculate_scores(big_df, args.target_columns)
+            scores = calculate_scores(big_df, ["ln_gamma_1", "ln_gamma_2"])
             scores.update({
                 "model_name": model_name,
                 "holdout_set": predict_set
@@ -204,13 +205,15 @@ def evaluate():
             with open(args.output_path / f"{model_name}_{predict_set}_scores.json", "w") as f:
                 json.dump(scores, f)
 
-            #Parity plot
-            fig, _ = parity_plot(big_df, args.target_columns, format_gammas=args.format_gammas)
-            fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_parity_plot.png", dpi=300)
+            # Plots
+            if not args.skip_figures:
+                #Parity plot
+                fig, _ = parity_plot(big_df, ["ln_gamma_1", "ln_gamma_2"], format_gammas=args.format_gammas)
+                fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_parity_plot.png", dpi=300)
 
-            # Absolute error vs composition
-            fig, _ = absolute_error_composition(big_df)
-            fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_absolute_error_vs_composition.png", dpi=300)
+                # Absolute error vs composition
+                fig, _ = absolute_error_composition(big_df)
+                fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_absolute_error_vs_composition.png", dpi=300)
     
     # Write out scores in publication format
     scores_df = pd.DataFrame(all_scores).round(4)
