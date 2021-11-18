@@ -2,13 +2,13 @@
 
 ```bash
 python deep_gamma/graphs/data_preprocessing.py 
-
+```
 
 # Machine Learning
 
 ## Local python
 COSMO
-```bash 
+``` bash 
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base
 ```
 

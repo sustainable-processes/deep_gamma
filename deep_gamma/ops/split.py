@@ -337,7 +337,7 @@ def merge_cluster_split(
             name
         )
         yield Output(
-            data.iloc[ind][config.smiles_columns + config.target_columns],
+            data.iloc[ind][config.features_columns],
             f"{name}_features"
         )
 
