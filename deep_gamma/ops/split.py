@@ -27,7 +27,7 @@ from sklearn.model_selection import GroupShuffleSplit, train_test_split
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dagster import op, Out, Field, Output, Array
+from dagster import DynamicOut, op, Out, Field, Output, Array
 from PIL.Image import Image
 from tqdm.auto import tqdm
 from typing import List, Tuple, Dict
@@ -190,31 +190,70 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
     config_schema=dict(
         # cluster_df_smiles_column=str,
         subsample_valid_cont=Field(float),
+        smiles_columns=Field(
+            [str],
+            description="SMILES input columns",
+            default_value=["smiles_1", "smiles_2"],
+        ),
+        target_columns=Field(
+            [str],
+            description="Target columns to be predicted by chemprop",
+            default_value=["ln_gamma_1", "ln_gamma_2"],
+        ),
+        features_columns=Field(
+            [str],
+            description="List of extra features columns",
+            default_value=["temperature (K)", "x(1)"],
+        ),
     ),
     out=dict(
-        train_indices=Out(
+        train=Out(
             description="Indices of the training set",
-            # io_manager_key="model_input_np_io_manager",
+            io_manager_key="model_input_csv_io_manager",
         ),
-        valid_cont_indices=Out(
+        train_features=Out(
+            description="Indices of the training set",
+            io_manager_key="model_input_csv_io_manager",
+        ),
+        valid_cont=Out(
             description="Validation containing molecules in the training set at temperatures and compositions not used during training.",
-            # io_manager_key="model_input_np_io_manager",
+            io_manager_key="model_input_csv_io_manager",
         ),
-        valid_mix_indices=Out(
+        valid_cont_features=Out(
+            description="Validation containing molecules in the training set at temperatures and compositions not used during training.",
+            io_manager_key="model_input_csv_io_manager",
+        ),
+        valid_mix=Out(
             description="All combinations of training molecules and validation molecules",
-            # io_manager_key="model_input_np_io_manager",
+            io_manager_key="model_input_csv_io_manager",
         ),
-        valid_indp_indices=Out(
+        valid_mix_features=Out(
+            description="All combinations of training molecules and validation molecules",
+            io_manager_key="model_input_csv_io_manager",
+        ),
+        valid_indp=Out(
             description="Just combinations of molecules in the validation set",
-            # io_manager_key="model_input_np_io_manager",
+            io_manager_key="model_input_csv_io_manager",
         ),
-        test_mix_indices=Out(
+        valid_indp_features=Out(
+            description="Just combinations of molecules in the validation set",
+            io_manager_key="model_input_csv_io_manager",
+        ),
+        test_mix=Out(
             description="All combinations of training molecules and test molecules",
-            # io_manager_key="model_input_np_io_manager",
+            io_manager_key="model_input_csv_io_manager",
         ),
-        test_indp_indices=Out(
+        test_mix_features=Out(
+            description="All combinations of training molecules and test molecules",
+            io_manager_key="model_input_csv_io_manager",
+        ),
+        test_indp=Out(
             description="Just combinations of molecules in the test set",
-            # io_manager_key="model_input_np_io_manager",
+            io_manager_key="model_input_csv_io_manager",
+        ),
+        test_indp_features=Out(
+            description="Just combinations of molecules in the test set",
+            io_manager_key="model_input_csv_io_manager",
         ),
     ),
 )
@@ -226,6 +265,7 @@ def merge_cluster_split(
     clusters_df: pd.DataFrame,
     data: pd.DataFrame,
 ):
+    all_indices = {}
     config = RecursiveNamespace(**context.solid_config)
     # Create train, valid and test subset molecule_list dfs
     train_mol_df, valid_mol_df, test_mol_df = (
@@ -250,13 +290,13 @@ def merge_cluster_split(
     )
     mask = np.zeros(n_train_base, dtype=bool)
     mask[train_select] = True
-    train_indices = train_base_indices[mask]
-    valid_cont_indices = train_base_indices[~mask]
-    context.log.info(f"Training set size: {len(train_indices)}")
-    context.log.info(f"Validation CONT size: {len(valid_cont_indices)}")
+    all_indices['train'] = train_base_indices[mask]
+    all_indices['valid_cont'] = train_base_indices[~mask]
+    context.log.info(f"Training set size: {len(all_indices['train'])}")
+    context.log.info(f"Validation CONT size: {len(all_indices['valid_cont'] )}")
 
     # Validation MIX and INDP
-    valid_mix_indices = data[
+    all_indices["valid_mix"] = data[
         (
             (data["smiles_1"].isin(train_mol_df["smiles"]))
             & (data["smiles_2"].isin(valid_mol_df["smiles"]))
@@ -266,15 +306,15 @@ def merge_cluster_split(
             & (data["smiles_2"].isin(train_mol_df["smiles"]))
         )
     ].index.to_numpy()
-    context.log.info(f"Validation MIX size: {len(valid_mix_indices)}")
-    valid_indp_indices = data[
+    context.log.info(f"Validation MIX size: {len(all_indices['valid_mix'])}")
+    all_indices["valid_indp"] = data[
         (data["smiles_1"].isin(valid_mol_df["smiles"]))
         & (data["smiles_1"].isin(valid_mol_df["smiles"]))
     ].index.to_numpy()
-    context.log.info(f"Validation INDP size: {len(valid_indp_indices)}")
+    context.log.info(f"Validation INDP size: {len(all_indices['valid_indp'] )}")
 
     # Test MIX and INDP
-    test_mix_indices = data[
+    all_indices["test_mix"] = data[
         (
             (data["smiles_1"].isin(train_mol_df["smiles"]))
             & (data["smiles_2"].isin(test_mol_df["smiles"]))
@@ -284,19 +324,22 @@ def merge_cluster_split(
             & (data["smiles_2"].isin(train_mol_df["smiles"]))
         )
     ].index.to_numpy()
-    context.log.info(f"Test MIX size: {len(test_mix_indices)}")
-    test_indp_indices = data[
+    context.log.info(f"Test MIX size: {len(all_indices['test_mix'])}")
+    all_indices["test_indp"] = data[
         (data["smiles_1"].isin(test_mol_df["smiles"]))
         & (data["smiles_1"].isin(test_mol_df["smiles"]))
     ].index.to_numpy()
-    context.log.info(f"Test INDP size: {len(valid_indp_indices)}")
+    context.log.info(f"Test INDP size: {len(all_indices['test_indp'])}")
 
-    yield Output(train_indices, "train_indices")
-    yield Output(valid_cont_indices, "valid_cont_indices")
-    yield Output(valid_mix_indices, "valid_mix_indices")
-    yield Output(valid_indp_indices, "valid_indp_indices")
-    yield Output(test_mix_indices, "test_mix_indices")
-    yield Output(test_indp_indices, "test_indp_indices")
+    for name, ind in all_indices.items():
+        yield Output(
+            data.iloc[ind][config.smiles_columns + config.target_columns],
+            name
+        )
+        yield Output(
+            data.iloc[ind][config.smiles_columns + config.target_columns],
+            f"{name}_features"
+        )
 
 
 @op(

@@ -41,6 +41,7 @@ class VLETrainArgs(TrainArgs):
     use_molecule_weights: bool = False
     combisolv: bool = False
     polynomial: bool = False
+    aspen: bool = False
 
     def process_args(self) -> None:
         if not self.combisolv and not self.polynomial:
@@ -95,7 +96,7 @@ class VLETrainArgs(TrainArgs):
                 self.separate_test_features_path = [str(data_dir / "test_mix_polynomial_temperature.csv")]
 
             self.target_columns = ['c0_0', 'c0_1', 'c1_0', 'c1_1', 'c2_0', 'c2_1', 'c3_0', 'c3_1', 'c4_0', 'c4_1']
-        else:
+        elif self.combisolv:
             data_dir = Path(self.data_dir)
             self.data_path = data_dir / "combisolv.txt"
             self.smiles_columns = ["mol solvent", "mol solute"]
@@ -103,6 +104,9 @@ class VLETrainArgs(TrainArgs):
             self.max_lr = 0.0002
             self.init_lr = 0.0001
             self.ffn_hidden_size = 500
+        elif self.aspen:
+            data_dir = Path(self.data_dir) / "05_model_input"
+            
 
         super().process_args()
 

@@ -1,3 +1,11 @@
+# Preprocessing
+
+```bash
+python deep_gamma/graphs/data_preprocessing.py 
+
+
+# Machine Learning
+
 ## Local python
 COSMO
 ```bash 
