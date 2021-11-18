@@ -1,8 +1,12 @@
 # Preprocessing
 
+
 ```bash
 python deep_gamma/graphs/data_preprocessing.py 
 ```
+
+Todo:
+* Use modes or something like that to distinguish between different datasets
 
 # Machine Learning
 
@@ -72,6 +76,18 @@ Evaluation
 grid run --instance_type g4dn.xlarge --dependency_file requirements.txt deep_gamma/ops/eval.py --drop_na --data_dir grid:cosmo-gammas:12
 ```
 
+Create datastore for COSMO
+```bash
+cd data/
+tar -czvf model_input.tar.gz 05_model_input/aspen/*
+grid datastore create --source model_input.tar.gz --name aspen-gammas
+```
+
+Run base COSMO model
+```bash
+grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:spen-gammas:1 --experiment_name aspen_base
+```
+
 * Notes on instances
     - g4dn.xlarge worked well for combisolv data
-    - p2.xlarge is the cheapest machine on grid that has enough RAM for COSMO (61GB)
+    - p3.2xlarge is the cheapest machine on grid that has enough RAM for COSMO (61GB)
