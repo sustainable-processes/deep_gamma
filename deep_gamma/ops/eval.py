@@ -24,20 +24,20 @@ def parity_plot(df: pd.DataFrame, target_columns: List[str], format_gammas: bool
     c = "#025b66"
     for i, target_column in enumerate(target_columns):
         # Parity plot
-        axes[i - 1].scatter(
+        axes[i].scatter(
             df[target_column], df[f"{target_column}_pred"], alpha=0.01, c=c
         )
         if not format_gammas:
-            axes[i - 1].set_xlabel(f"Measured {target_column}")
-            axes[i - 1].set_ylabel(f"Predicted {target_column}")
+            axes[i].set_xlabel(f"Measured {target_column}")
+            axes[i].set_ylabel(f"Predicted {target_column}")
         else:
-            axes[i - 1].set_xlabel(f"Measured $\ln \gamma_{i}$")
-            axes[i - 1].set_ylabel(f"Predicted $\ln \gamma_{i}$")
+            axes[i].set_xlabel(f"Measured $\ln \gamma_{i+1}$")
+            axes[i].set_ylabel(f"Predicted $\ln \gamma_{i+1}$")
         max_val = df[target_column].max()
         min_val = df[target_column].min()
 
         # Parity line
-        axes[i - 1].plot([min_val, max_val], [min_val, max_val], "--", c="grey")
+        axes[i].plot([min_val, max_val], [min_val, max_val], "--", c="grey")
 
         # Scores
         if scores is not None:
@@ -68,8 +68,8 @@ def absolute_error_composition(df: pd.DataFrame):
     for i in [1,2]:
         abs_difference = (df.dropna()[f"ln_gamma_{i}"]-df.dropna()[f"ln_gamma_{i}_pred"]).abs()
         big_df_errors[f"abs_error_{i}"]= abs_difference.to_numpy()
-        axes[i-1].scatter(df.dropna()["x(1)"], abs_difference, alpha=0.1, c = "#025b66")
-        axes[i-1].set_xlabel("x(1)")
+        axes[i-1].scatter(df.dropna()["x1"], abs_difference, alpha=0.1, c = "#025b66")
+        axes[i-1].set_xlabel("x1")
         axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$")
         axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
     return fig, axes
@@ -146,7 +146,7 @@ def evaluate():
             if "polynomial" in name:
                 path = "fold_0/model_0/model.pt" 
             else:
-                path = "model_0/model.pt"
+                path = "fold_0/model_0/model.pt"
             wandb_base_path = f"ceb-sre/vle/{run_id}"
             checkpoint_path = wandb.restore(path, run_path=wandb_base_path, root=args.output_path / name)
             model_paths[name] = str(checkpoint_path.name)
