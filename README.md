@@ -85,7 +85,7 @@ grid datastore create --source model_input.tar.gz --name aspen-gammas
 
 Run base COSMO model
 ```bash
-grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:spen-gammas:1 --experiment_name aspen_base
+grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:aspen-gammas:1 --experiment_name aspen_base
 ```
 
 * Notes on instances

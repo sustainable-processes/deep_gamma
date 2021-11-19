@@ -135,8 +135,10 @@ def evaluate():
     model_run_ids = {
         # "cosmo_base": "zn669uuj",
         # "cosmo_base_pretrained": "1tsddx25",
-        "cosmo_polynomial_pretrained": "3ca6vl9b",
-        "cosmo_polynomial": "39g74a7c"
+        # "cosmo_polynomial_pretrained": "3ca6vl9b",
+        # "cosmo_polynomial": "39g74a7c"
+        "aspen_base": "3g7mpeqy",
+        "aspen_base_pretrained": "3msj6d4l"
     }
     if not args.skip_prediction:
         wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
