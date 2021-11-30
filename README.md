@@ -76,10 +76,10 @@ Evaluation
 grid run --instance_type g4dn.xlarge --dependency_file requirements.txt deep_gamma/ops/eval.py --drop_na --data_dir grid:cosmo-gammas:12
 ```
 
-Create datastore for COSMO
+Create datastore for aspen
 ```bash
 cd data/
-tar -czvf model_input.tar.gz 05_model_input/aspen/*
+tar -czvf model_input.tar.gz 05_model_input/*
 grid datastore create --source model_input.tar.gz --name aspen-gammas
 ```
 

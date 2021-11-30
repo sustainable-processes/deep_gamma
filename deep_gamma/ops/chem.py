@@ -9,9 +9,6 @@ import os
 from pathlib import Path
 from subprocess import call
 
-
-
-
 class VLETrainArgs(TrainArgs):
     experiment_name: str = None
     data_dir: Optional[str] = "data/"
@@ -39,13 +36,14 @@ class VLETrainArgs(TrainArgs):
     wandb_entity: str = "ceb-sre"
     wandb_project: str = "vle"
     use_molecule_weights: bool = False
-    combisolv: bool = False
-    polynomial: bool = False
-    aspen: bool = False
+    dataset: Literal["combisolv", "cosmo",  "cosmo-polynomial", "aspen"] = "cosmo"
 
     def process_args(self) -> None:
-        if not self.combisolv and not self.polynomial:
-            data_dir = Path(self.data_dir) / "05_model_input"
+        if self.dataset in  ["cosmo", "aspen"]:
+            if self.dataset == "cosmo":
+                data_dir = Path(self.data_dir) / "05_model_input" / "cosmo"
+            elif self.dataset == "aspen": 
+                data_dir = Path(self.data_dir) / "05_model_input" / "aspen"
             # Train
             if self.data_path is None:
                 self.data_path = str(data_dir / "train.csv")
@@ -75,8 +73,8 @@ class VLETrainArgs(TrainArgs):
                 self.separate_test_features_path = [str(data_dir / "test_mix_temperatures.csv")]
             if self.use_molecule_weights and self.separate_test_molecule_weights_path is None:
                 self.separate_test_molecule_weights_path = str(data_dir / "test_mix_weights.csv")
-        elif self.polynomial:
-            data_dir = Path(self.data_dir) / "05_model_input"
+        elif self.dataset == "cosmo-polynomial":
+            data_dir = Path(self.data_dir) / "05_model_input" / "cosmo"
             # Train
             if self.data_path is None:
                 self.data_path = str(data_dir / "train_polynomial.csv")
@@ -96,7 +94,7 @@ class VLETrainArgs(TrainArgs):
                 self.separate_test_features_path = [str(data_dir / "test_mix_polynomial_temperature.csv")]
 
             self.target_columns = ['c0_0', 'c0_1', 'c1_0', 'c1_1', 'c2_0', 'c2_1', 'c3_0', 'c3_1', 'c4_0', 'c4_1']
-        elif self.combisolv:
+        elif self.dataset == "combisolv":
             data_dir = Path(self.data_dir)
             self.data_path = data_dir / "combisolv.txt"
             self.smiles_columns = ["mol solvent", "mol solute"]
@@ -104,9 +102,6 @@ class VLETrainArgs(TrainArgs):
             self.max_lr = 0.0002
             self.init_lr = 0.0001
             self.ffn_hidden_size = 500
-        elif self.aspen:
-            data_dir = Path(self.data_dir) / "05_model_input"
-            
 
         super().process_args()
 
