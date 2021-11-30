@@ -3,6 +3,7 @@ from .split import (
     scaffold_split,
     get_scaffolds,
     visualize_scaffolds,
+    limit_outputs,
     plot_scaffold_counts,
     find_clusters,
     plot_cluster_counts,

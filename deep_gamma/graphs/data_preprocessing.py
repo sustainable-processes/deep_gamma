@@ -1,10 +1,9 @@
 from dagster import op, graph, GraphOut, InputDefinition, Out, ExperimentalWarning
-from torch import Graph
-from deep_gamma import USE_MODIN
 from deep_gamma.ops import (
     lookup_smiles,
     resolve_smiles,
     get_scaffolds,
+    limit_outputs,
     scaffold_split,
     visualize_scaffolds,
     plot_scaffold_counts,
@@ -25,10 +24,7 @@ from deep_gamma.resources import (
 )
 from deep_gamma import DATA_PATH
 
-if USE_MODIN:
-    import modin.pandas as pd
-else:
-    import pandas as pd
+import pandas as pd
 from typing import Union
 from pathlib import Path
 
@@ -87,7 +83,8 @@ def dev_read_data_aspen():
 def cluster_split_data_dev():
     """Just the cluster split"""
     molecule_list_df, data = dev_read_data_aspen()
-    cluster_split_data(molecule_list_df, data)
+    new_data = limit_outputs(data)
+    cluster_split_data(molecule_list_df, new_data)
 
 @graph
 def scaffold_split_data(df: pd.DataFrame):
@@ -245,20 +242,20 @@ csplit_job = cluster_split_data_dev.to_job(
             {"base_path": str(DATA_PATH / "02_intermediate")}
         ),
         "reporting_pil_io_manager": pil_io_manager.configured(
-            {"base_path": str(DATA_PATH / "08_reporting")}
+            {"base_path": str(DATA_PATH / "08_reporting/aspen")}
         ),
         "reporting_mpl_io_manager": mpl_io_manager.configured(
-            {"base_path": str(DATA_PATH / "08_reporting")}
+            {"base_path": str(DATA_PATH / "08_reporting/aspen")}
         ),
         "model_input_np_io_manager": np_io_manager.configured(
             {
-                "base_path": str(DATA_PATH / "05_model_input"),
+                "base_path": str(DATA_PATH / "05_model_input/aspen"),
                 "save_txt": True,
                 "compress": False,
             }
         ),
         "model_input_csv_io_manager": csv_io_manager.configured(
-            {"base_path": str(DATA_PATH / "05_model_input")}
+            {"base_path": str(DATA_PATH / "05_model_input/aspen")}
         ),
     },
     config={
@@ -287,6 +284,9 @@ csplit_job = cluster_split_data_dev.to_job(
                     )}   
                 }
             },
+            "limit_outputs": {
+                "config": dict(min_value=0.0, max_value=14.0)
+            }
         },
         "loggers": {"console": {"config": {"log_level": "INFO"}}},
     },

@@ -25,6 +25,7 @@ from rdkit.Chem import AllChem
 from rdkit.ML.Cluster import Butina
 from sklearn.model_selection import GroupShuffleSplit, train_test_split
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from dagster import DynamicOut, op, Out, Field, Output, Array
@@ -33,11 +34,6 @@ from tqdm.auto import tqdm
 from typing import List, Tuple, Dict
 from tqdm.auto import tqdm
 import os
-
-if USE_MODIN:
-    import modin.pandas as pd
-else:
-    import pandas as pd
 
 
 @op(
@@ -148,6 +144,27 @@ def plot_cluster_counts(context, df: pd.DataFrame):
     ax.set_xticklabels([])
     return fig
 
+def check_range(series, min_value, max_value,):
+    return (series < max_value).all() and (series >= min_value).all()
+
+@op(
+    config_schema=dict(
+        min_value=Field(float, description="Minimum value for output"),
+        max_value=Field(float, description="Max value for output"),
+    )
+)
+def limit_outputs(context, df: pd.DataFrame):
+    # Limit outputs to minimum and maximum values
+    config = RecursiveNamespace(**context.solid_config)
+    groups = []
+    for _, group in df.groupby(["smiles_1", "smiles_2"]):
+        check = (
+            check_range(group["ln_gamma_1"], config.min_value, config.max_value) and 
+            check_range(group["ln_gamma_2"], config.min_value, config.max_value)
+        )
+        if check:
+            groups.append(group)
+    return pd.concat(groups, axis=0).reset_index()
 
 @op(
     config_schema=dict(
