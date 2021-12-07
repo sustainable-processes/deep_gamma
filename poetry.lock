@@ -283,6 +283,23 @@ python-versions = ">=3.5.0"
 unicode_backport = ["unicodedata2"]
 
 [[package]]
+name = "chemicals"
+version = "1.0.14"
+description = "Chemical properties component of Chemical Engineering Design Library (ChEDL)"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+fluids = ">=1.0.12"
+numpy = "*"
+pandas = "*"
+scipy = "*"
+
+[package.extras]
+"Coverage documentation" = ["wsgiref (>=0.1.2)", "coverage (>=4.0.3)"]
+
+[[package]]
 name = "chemprop"
 version = "1.4.0"
 description = "Molecular Property Prediction with Message Passing Neural Networks"
@@ -645,6 +662,21 @@ python-versions = "*"
 Flask = "*"
 gevent = "*"
 gevent-websocket = "*"
+
+[[package]]
+name = "fluids"
+version = "1.0.13"
+description = "Fluid dynamics component of Chemical Engineering Design Library (ChEDL)"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = ">=1.5.0"
+scipy = ">=0.9.0"
+
+[package.extras]
+"Coverage documentation" = ["wsgiref (>=0.1.2)", "coverage (>=4.0.3)", "pint"]
 
 [[package]]
 name = "fonttools"
@@ -2291,6 +2323,23 @@ python-versions = ">= 3.5"
 test = ["pytest", "pathlib2"]
 
 [[package]]
+name = "thermo"
+version = "0.2.10"
+description = "Chemical properties component of Chemical Engineering Design Library (ChEDL)"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+chemicals = ">=1.0.12"
+fluids = ">=1.0.10"
+pandas = "*"
+scipy = "*"
+
+[package.extras]
+"Coverage documentation" = ["wsgiref (>=0.1.2)", "coverage (>=4.0.3)"]
+
+[[package]]
 name = "threadpoolctl"
 version = "3.0.0"
 description = "threadpoolctl"
@@ -2628,7 +2677,7 @@ cosmo = ["cosmopy", "notify-run"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.9"
-content-hash = "dca578c90db32dc465c52ee660fdbfd1307d471bfb730db87d147d009f2be06b"
+content-hash = "d60e5dc678ded07b9fb0c0c4f830029876dcb7c68f8c4dff7b0fd6d9826df0eb"
 
 [metadata.files]
 absl-py = [
@@ -2848,6 +2897,9 @@ charset-normalizer = [
     {file = "charset-normalizer-2.0.7.tar.gz", hash = "sha256:e019de665e2bcf9c2b64e2e5aa025fa991da8720daa3c1138cadd2fd1856aed0"},
     {file = "charset_normalizer-2.0.7-py3-none-any.whl", hash = "sha256:f7af805c321bfa1ce6714c51f254e0d5bb5e5834039bc17db7ebe3a4cec9492b"},
 ]
+chemicals = [
+    {file = "chemicals-1.0.14.tar.gz", hash = "sha256:53466fa75171785c4f50c725fbd88dc1b4e6c551795b6d29232416cd5af120be"},
+]
 chemprop = []
 cirpy = [
     {file = "CIRpy-1.0.2.tar.gz", hash = "sha256:b08c1483779e1c8fa6a5da7e383138a33e8396b31f56d827a3bca7c83e689c16"},
@@ -2965,6 +3017,9 @@ flask-graphql = [
 flask-sockets = [
     {file = "Flask-Sockets-0.2.1.tar.gz", hash = "sha256:072927da8edca0e81e024f5787e643c87d80b351b714de95d723becb30e0643b"},
     {file = "Flask_Sockets-0.2.1-py2.py3-none-any.whl", hash = "sha256:350a76d55f5889f64afd2ca9b32f262680b7960965f0830365576307d30cfe1e"},
+]
+fluids = [
+    {file = "fluids-1.0.13.tar.gz", hash = "sha256:8e527255ac10fbc291e58decac5e37e4979ae80c6a5cf856193c92da9e5eb24f"},
 ]
 fonttools = [
     {file = "fonttools-4.28.1-py3-none-any.whl", hash = "sha256:68071406009e7ef6a5fdcd85d95975cd6963867bb226f2b786bfffe15d1959ef"},
@@ -4357,6 +4412,9 @@ termcolor = [
 testpath = [
     {file = "testpath-0.5.0-py3-none-any.whl", hash = "sha256:8044f9a0bab6567fc644a3593164e872543bb44225b0e24846e2c89237937589"},
     {file = "testpath-0.5.0.tar.gz", hash = "sha256:1acf7a0bcd3004ae8357409fc33751e16d37ccc650921da1094a86581ad1e417"},
+]
+thermo = [
+    {file = "thermo-0.2.10.tar.gz", hash = "sha256:316d99effff54ff11055f8be84d41c7282e00caa89dd38315d8b2eceb95bc0a1"},
 ]
 threadpoolctl = [
     {file = "threadpoolctl-3.0.0-py3-none-any.whl", hash = "sha256:4fade5b3b48ae4b1c30f200b28f39180371104fccc642e039e0f2435ec8cc211"},

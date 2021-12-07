@@ -10,11 +10,11 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from rdkit import Chem
 from pathlib import Path
 from typing import List, Optional
-import wandb
+from typing_extensions import Literal
 import os
 from chemprop.args import CommonArgs
 import json
-
+import wandb
 
 def parity_plot(df: pd.DataFrame, target_columns: List[str], format_gammas: bool = False, scores: dict = None):
     fig, axes = plt.subplots(1, len(target_columns), figsize=(5*len(target_columns), 5))
@@ -105,6 +105,7 @@ class VLEPredictArgs(CommonArgs):
     num_workers: int = 4
     results_path: str = "results"
     format_gammas: bool = False
+    dataset: Literal["cosmo",  "cosmo-polynomial", "aspen"] = "cosmo"
 
     @property
     def ensemble_size(self) -> int:
@@ -113,6 +114,10 @@ class VLEPredictArgs(CommonArgs):
 
     def process_args(self) -> None:
         self.data_input_dir = Path(self.data_dir) / "05_model_input"
+        if "cosmo" in self.dataset:
+            self.data_input_dir = self.data_input_dir / "cosmo"
+        elif "aspen" == self.dataset:
+            self.data_input_dir = self.data_input_dir / "aspen"
         self.results_path = Path(self.results_path)
         if not self.results_path.exists():
             os.makedirs(self.results_path)
@@ -138,7 +143,8 @@ def evaluate():
         # "cosmo_polynomial_pretrained": "3ca6vl9b",
         # "cosmo_polynomial": "39g74a7c"
         "aspen_base": "3g7mpeqy",
-        "aspen_base_pretrained": "3msj6d4l"
+        "aspen_base_pretrained": "3msj6d4l",
+        "cosmo_pretrained_depth_4": "3ohdekmk"
     }
     if not args.skip_prediction:
         wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")

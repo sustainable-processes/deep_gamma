@@ -83,9 +83,14 @@ tar -czvf model_input.tar.gz 05_model_input/*
 grid datastore create --source model_input.tar.gz --name aspen-gammas
 ```
 
-Run base COSMO model
+Run base aspen model
 ```bash
 grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:aspen-gammas:1 --experiment_name aspen_base
+```
+
+Run pretrained aspen model
+```bash
+grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamma/ops/chem.py --data_dir grid:gammas:1 --experiment_name aspen_pretrained --wandb_checkpiont_frzn_run zn669uuj
 ```
 
 * Notes on instances
