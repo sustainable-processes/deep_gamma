@@ -142,8 +142,8 @@ def evaluate():
         # "cosmo_base_pretrained": "1tsddx25",
         # "cosmo_polynomial_pretrained": "3ca6vl9b",
         # "cosmo_polynomial": "39g74a7c"
-        "aspen_base": "3g7mpeqy",
-        "aspen_base_pretrained": "3msj6d4l",
+        # "aspen_base": "3g7mpeqy",
+        # "aspen_base_pretrained": "3msj6d4l",
         "cosmo_pretrained_depth_4": "3ohdekmk"
     }
     if not args.skip_prediction:
