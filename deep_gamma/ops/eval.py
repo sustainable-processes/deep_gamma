@@ -114,6 +114,7 @@ class VLEPredictArgs(CommonArgs):
 
     def process_args(self) -> None:
         self.data_input_dir = Path(self.data_dir) / "05_model_input"
+        
         if "cosmo" in self.dataset:
             self.data_input_dir = self.data_input_dir / "cosmo"
         elif "aspen" == self.dataset:
