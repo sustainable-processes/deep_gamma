@@ -6,7 +6,7 @@ python deep_gamma/graphs/data_preprocessing.py
 ```
 
 Todo:
-* Use modes or something like that to distinguish between different datasets
+* Use modes or something like that to distinguish between different datasets - will do maybe
 
 # Machine Learning
 
