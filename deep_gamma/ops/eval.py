@@ -16,7 +16,12 @@ from chemprop.args import CommonArgs
 import json
 import wandb
 
-def parity_plot(df: pd.DataFrame, target_columns: List[str], format_gammas: bool = False, scores: dict = None):
+def parity_plot(
+    df: pd.DataFrame,
+    target_columns: List[str],
+    format_gammas: bool = False,
+    scores: dict = None
+):
     fig, axes = plt.subplots(1, len(target_columns), figsize=(5*len(target_columns), 5))
     if type(axes) != np.ndarray:
         axes = [axes]

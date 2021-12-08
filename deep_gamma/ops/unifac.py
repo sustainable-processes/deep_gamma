@@ -6,6 +6,8 @@ from deep_gamma import DATA_PATH
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+from deep_gamma.ops.eval import parity_plot, calculate_scores
+import json
 
 class BinaryUnifac:
     def __init__(self) -> None:
@@ -41,49 +43,59 @@ class BinaryUnifac:
             for xp in xs
         ]
 
-def dev_read_data_aspen():
-    """Dev mode read data in. Problably should change this to use Dagster modes"""
-    data = pd.read_csv(DATA_PATH / "01_raw" / "aspen_data.csv")
-    molecule_list_df = pd.Series(
-        pd.concat(
-            [data["smiles_1"], data["smiles_2"]]
-        ).unique()
-    ).to_frame().rename(columns={0: "smiles"})
-    return molecule_list_df, data
-
-
 
 if __name__ == "__main__":
     bu = BinaryUnifac()
-    _, data = dev_read_data_aspen()
+    data = pd.read_csv(DATA_PATH / "01_raw" / "aspen_data.csv")
+
+    skip_predictions = True
     
-    gammas = []
-    groups = data.groupby(["smiles_1", "smiles_2", "TRange"])
-    bar = tqdm(groups, total=len(groups))
-    j = 0
-    for idx, group in bar:
-        x = group["x1"]
-        temp = idx[2]
-        try:
-            g =  bu.gammas([idx[0], idx[1]], x, temp)
-            if len(g) < len(x):
-                continue
-            t =  [
-                {
-                    "smiles_1": idx[0],
-                    "smiles_2": idx[1],
-                    "TRange": temp,
-                    "x1": x.iloc[i],
-                    "ln_gamma_1": g[i][0],
-                    "ln_gamma_2": g[i][1],
-                }
-                for i in range(len(x))
-            ]
-            gammas.extend(t)
-            j+=1
-        except ValueError or AttributeError:
-            print(f"Failed for {idx[0]}, {idx[1]}")
-        except KeyError: 
-            print(f"Failed for {idx[0]}, {idx[1]}")
-    df = pd.DataFrame(gammas)
-    df.to_csv("data/07_model_output/aspen_unifac.csv")
+    # Calculate activity coefficients using UNIFAC
+
+    if not skip_predictions:
+        gammas = []
+        groups = data.groupby(["smiles_1", "smiles_2", "TRange"])
+        bar = tqdm(groups, total=len(groups))
+        for idx, group in bar:
+            x = group["x1"]
+            temp = idx[2]
+            try:
+                g =  bu.gammas([idx[0], idx[1]], x, temp)
+                if len(g) < len(x):
+                    continue
+                t =  [
+                    {
+                        "smiles_1": idx[0],
+                        "smiles_2": idx[1],
+                        "TRange": temp,
+                        "x1": x.iloc[i],
+                        "ln_gamma_1_pred": np.log(g[i][0]),
+                        "ln_gamma_2_pred": np.log(g[i][1]),
+                    }
+                    for i in range(len(x))
+                ]
+                gammas.extend(t)
+            except ValueError or AttributeError:
+                print(f"Failed for {idx[0]}, {idx[1]}")
+            except KeyError: 
+                print(f"Failed for {idx[0]}, {idx[1]}")
+        df = pd.DataFrame(gammas)
+        df.to_csv("data/07_model_output/aspen_unifac.csv")
+    else:
+        df = pd.read_csv("data/07_model_output/aspen_unifac.csv")
+    
+
+    df_new = data.merge(df, on=["smiles_1", "smiles_2", "TRange"], how="left").dropna()
+    for i in [1,2]:
+        for j in ["", "_pred"]:
+            df_new[f"ln_gamma_{i}{j}"] = df_new[f"ln_gamma_{i}{j}"].astype(float)
+    
+    # Evaluation
+    scores = calculate_scores(df_new, ["ln_gamma_1", "ln_gamma_2"])
+    with open("data/07_model_output/aspen_unifac_scores.json", "w") as f:
+        json.dump(scores, f)
+    fig, ax = parity_plot(
+        df_new, ["ln_gamma_1", "ln_gamma_2"], scores=scores, format_gammas=True
+    )
+    fig.savefig("data/08_reporting/aspen/unifac_parity_plot.png", dpi=300)
+    
