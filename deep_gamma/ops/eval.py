@@ -20,7 +20,8 @@ def parity_plot(
     df: pd.DataFrame,
     target_columns: List[str],
     format_gammas: bool = False,
-    scores: dict = None
+    scores: dict = None,
+    alpha=0.01,
 ):
     fig, axes = plt.subplots(1, len(target_columns), figsize=(5*len(target_columns), 5))
     if type(axes) != np.ndarray:
@@ -30,7 +31,7 @@ def parity_plot(
     for i, target_column in enumerate(target_columns):
         # Parity plot
         axes[i].scatter(
-            df[target_column], df[f"{target_column}_pred"], alpha=0.01, c=c
+            df[target_column], df[f"{target_column}_pred"], alpha=alpha, c=c
         )
         if not format_gammas:
             axes[i].set_xlabel(f"Measured {target_column}")
@@ -49,7 +50,8 @@ def parity_plot(
             for i, target_column in enumerate(target_columns):
                 rmse_patch = mpatches.Patch(label="RMSE = {:.3f}".format(scores[f"{target_column}_rmse"]), color=c)
                 mae_patch = mpatches.Patch(label="MAE = {:.3f}".format(scores[f"{target_column}_mae"]), color=c)
-                axes[i - 1].legend(handles=[rmse_patch, mae_patch])
+                r2_score =  mpatches.Patch(label=r"$R^2$"+ "= {:.3f}".format(scores[f"{target_column}_r2"]), color=c)
+                axes[i - 1].legend(handles=[rmse_patch, mae_patch, r2_score])
 
     return fig, axes
 
@@ -63,6 +65,9 @@ def calculate_scores(df: pd.DataFrame, target_columns: List[str]):
     for target_column in target_columns:
         mae = mean_absolute_error(df[target_column], df[f"{target_column}_pred"])
         scores[f"{target_column}_mae"] = mae
+    for target_column in target_columns:
+        r2 = r2_score(df[target_column], df[f"{target_column}_pred"])
+        scores[f"{target_column}_r2"] = r2
     return scores
 
 
