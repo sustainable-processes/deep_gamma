@@ -100,6 +100,7 @@ def calculate_activity_coefficients_polynomial(
 class VLEPredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
     data_dir: Optional[str] = "data/"
+    model_path: Optional[str] = None
     skip_prediction: bool = False
     skip_figures: bool = False
     smiles_columns: List[str] = ["smiles_1", "smiles_2"]
@@ -158,15 +159,18 @@ def evaluate():
         "cosmo_pretrained_depth_4": "3ohdekmk"
     }
     if not args.skip_prediction:
-        wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
-        for name, run_id in model_run_ids.items():
-            if "polynomial" in name:
-                path = "fold_0/model_0/model.pt" 
-            else:
-                path = "fold_0/model_0/model.pt"
-            wandb_base_path = f"ceb-sre/vle/{run_id}"
-            checkpoint_path = wandb.restore(path, run_path=wandb_base_path, root=args.output_path / name)
-            model_paths[name] = str(checkpoint_path.name)
+        if args.model_path is not None:
+            model_paths["model"] = args.model_path 
+        else:
+            wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
+            for name, run_id in model_run_ids.items():
+                if "polynomial" in name:
+                    path = "fold_0/model_0/model.pt" 
+                else:
+                    path = "fold_0/model_0/model.pt"
+                wandb_base_path = f"ceb-sre/vle/{run_id}"
+                checkpoint_path = wandb.restore(path, run_path=wandb_base_path, root=args.output_path / name)
+                model_paths[name] = str(checkpoint_path.name)
     else:
         model_paths = model_run_ids
 
@@ -241,8 +245,6 @@ def evaluate():
     latex_table = scores_df.to_latex()
     with open(args.reporting_dir / "latex_table.txt", "w") as f:
         f.write(latex_table)
-
-
 
 
 if __name__ == "__main__":
