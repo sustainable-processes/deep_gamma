@@ -156,7 +156,7 @@ def evaluate():
         # "cosmo_polynomial": "39g74a7c"
         # "aspen_base": "3g7mpeqy",
         # "aspen_base_pretrained": "3msj6d4l",
-        "cosmo_pretrained_depth_4": "3ohdekmk"
+        "cosmo_pretrained_depth_4": "3dxpryr1"
     }
     if not args.skip_prediction:
         if args.model_path is not None:
