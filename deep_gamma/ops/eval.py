@@ -78,8 +78,8 @@ def absolute_error_composition(df: pd.DataFrame):
     for i in [1,2]:
         abs_difference = (df.dropna()[f"ln_gamma_{i}"]-df.dropna()[f"ln_gamma_{i}_pred"]).abs()
         big_df_errors[f"abs_error_{i}"]= abs_difference.to_numpy()
-        axes[i-1].scatter(df.dropna()["x1"], abs_difference, alpha=0.1, c = "#025b66")
-        axes[i-1].set_xlabel("x1")
+        axes[i-1].scatter(df.dropna()["x(1)"], abs_difference, alpha=0.1, c = "#025b66")
+        axes[i-1].set_xlabel("x(1)")
         axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$")
         axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
     return fig, axes
