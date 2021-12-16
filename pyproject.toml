@@ -28,6 +28,7 @@ tensorboard = "^2.7.0"
 chemprop = {path = "chemprop", develop = true}
 torch-lr-finder = "^0.2.1"
 thermo = "^0.2.10"
+seaborn = "^0.11.2"
 
 
 [tool.poetry.dev-dependencies]

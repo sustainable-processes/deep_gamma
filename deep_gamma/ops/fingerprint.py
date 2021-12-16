@@ -30,7 +30,7 @@ def deep_gamma_fingerprint() -> None:
     provided molecules, according to a previously trained model.
     """
     args = DeepGammaFingerprintArgs().parse_args()
-    sets = ["valid_cont", "valid_mix", "valid_indp", "test_indp", "test_mix"]
+    sets = ["train", "valid_cont", "valid_mix", "valid_indp", "test_indp", "test_mix"]
     for predict_set in sets:
         args.test_path = args.data_input_dir /  f"{predict_set}.csv"
         args.features_path = [args.data_input_dir / f"{predict_set}_features.csv"]

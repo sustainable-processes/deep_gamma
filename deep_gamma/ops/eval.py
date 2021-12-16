@@ -133,10 +133,10 @@ class VLEPredictArgs(CommonArgs):
         self.results_path = Path(self.results_path)
         if not self.results_path.exists():
             os.makedirs(self.results_path)
-        self.output_path = self.results_path / "07_model_output"
+        self.output_path = self.results_path / "07_model_output" / self.dataset
         if not self.output_path.exists():
             os.makedirs(self.output_path)
-        self.reporting_dir = self.results_path / "08_reporting"
+        self.reporting_dir = self.results_path / "08_reporting" / self.dataset
         if not self.reporting_dir.exists():
             os.makedirs(self.reporting_dir)
         super().process_args()

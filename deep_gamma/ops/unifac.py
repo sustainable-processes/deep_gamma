@@ -44,6 +44,7 @@ class BinaryUnifac:
         ]
 
 
+
 if __name__ == "__main__":
     bu = BinaryUnifac()
     data = pd.read_csv(DATA_PATH / "01_raw" / "aspen_data.csv")
