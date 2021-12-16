@@ -1915,17 +1915,6 @@ serve = ["uvicorn", "aiosignal", "starlette", "frozenlist", "opencensus", "color
 tune = ["pandas", "tabulate", "tensorboardX (>=1.9)", "requests"]
 
 [[package]]
-name = "rdkit-pypi"
-version = "2021.9.3"
-description = "A collection of chemoinformatics and machine-learning software written in C++ and Python"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-numpy = ">=1.19"
-
-[[package]]
 name = "redis"
 version = "4.0.2"
 description = "Python client for Redis database and key-value store"
@@ -2687,7 +2676,7 @@ cosmo = ["cosmopy", "notify-run"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "bf782bff081d5b5fe29aef7b8781a30942ab3b4241b8ca0c33a75ac9c75cb8d9"
+content-hash = "08cbd8d49df8bd65099ca4faebbd5ee9a8099374025dd6b769bc4ccd9774a51c"
 
 [metadata.files]
 absl-py = [
@@ -4222,22 +4211,6 @@ ray = [
     {file = "ray-1.9.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:2874d802f0a2d88e434c1e24c2549b4c4d3cca0177f694aecb7f89c4922d4a5c"},
     {file = "ray-1.9.0-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:dc20a9128053aeaa5bcf30cef58dd8367d57ace5e48327bc771d178f1b46ef3d"},
     {file = "ray-1.9.0-cp39-cp39-win_amd64.whl", hash = "sha256:3f93deb83f94ebf4e99fc6169f34973587d22baaebc3b1054572bc770820d60c"},
-]
-rdkit-pypi = [
-    {file = "rdkit_pypi-2021.9.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:6ecd6c6d1c98bad46dd773bb708bdd060816e264e514066c7867a2b1b756ef87"},
-    {file = "rdkit_pypi-2021.9.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dcab2faf4541b3e1bdbe4c41b073406ef39452ff761278da01edd25a0f5f3dba"},
-    {file = "rdkit_pypi-2021.9.3-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:e899519ce53984f7d929f3733c2dfc26a7349919bcadab1b62faaadbb0bfb917"},
-    {file = "rdkit_pypi-2021.9.3-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:23091efad3941943e951080923977117d2b4a2ddf7c98ec77a2e8abed581c2a9"},
-    {file = "rdkit_pypi-2021.9.3-cp36-cp36m-win_amd64.whl", hash = "sha256:b1fc80fab7638c10b7c951f3a6b351c6b3392fc1232a804977110eee8bf2873c"},
-    {file = "rdkit_pypi-2021.9.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:d59e377680ceb7ef8bc413276e615e1c7bc081c99454723f8f97bb78b0e74066"},
-    {file = "rdkit_pypi-2021.9.3-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e4ec7de5ecf732ca0bc48a107dfa27b78b350e00a67bae03311134614dec187c"},
-    {file = "rdkit_pypi-2021.9.3-cp37-cp37m-win_amd64.whl", hash = "sha256:e611650c0a77a3690f63055bbeddf257091acd05cf3c4e97408cd310d0497259"},
-    {file = "rdkit_pypi-2021.9.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:ff131bb75677013943122e936afcad059ecdd4e613ff9b75ebc79096e49ebd7e"},
-    {file = "rdkit_pypi-2021.9.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d45c435b11d98c1c60f23ddf45aac320037891375e5a8db5b8162bda66a48558"},
-    {file = "rdkit_pypi-2021.9.3-cp38-cp38-win_amd64.whl", hash = "sha256:d9ace9a53d3ad76d361b1cad673504f8f42d4b71662ef0103cc9c6bd23b7e8de"},
-    {file = "rdkit_pypi-2021.9.3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:f9ebd20c29988d6bcdc8f2348d35c1c3c90c90ac177df5dabe742228b887c010"},
-    {file = "rdkit_pypi-2021.9.3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c3cdf884d6fef0fb7cee7999685b61311528491f5cc04cc5a1d7f71a87daa896"},
-    {file = "rdkit_pypi-2021.9.3-cp39-cp39-win_amd64.whl", hash = "sha256:0c6c8119f22c838c9862a54605f6428703b39e036b5a9aefc45d81ee2f71cd22"},
 ]
 redis = [
     {file = "redis-4.0.2-py3-none-any.whl", hash = "sha256:c8481cf414474e3497ec7971a1ba9b998c8efad0f0d289a009a5bbef040894f9"},
