@@ -1,7 +1,7 @@
 """Loads a trained chemprop model checkpoint and encode latent fingerprint vectors for the molecules in a dataset.
     Uses the same command line arguments as predict."""
 
-from deep_gamma.ops.eval import VLEPredictArgs
+from eval import VLEPredictArgs
 from chemprop.train.molecule_fingerprint import molecule_fingerprint
 from chemprop.args import FingerprintArgs
 import os

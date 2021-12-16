@@ -8,9 +8,9 @@ python deep_gamma/graphs/data_preprocessing.py
 Todo:
 * Use modes or something like that to distinguish between different datasets - will do maybe
 
-# Machine Learning
+# Machine Learning 
 
-## Local python
+## Local python 
 COSMO
 ``` bash 
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base
@@ -26,7 +26,16 @@ Combisolv
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base --artifact_name cosmo_base --combisolv
 ```
 
-Evaluation
+Fingerpints
+``` bash
+python deep_gamma/ops/fingerprint.py --wandb_checkpoint_run 32vlsf8l --results_path data/ --dataset aspen
+```
+Then rename to `data/07_model_output/aspen` to `aspen_base_fingerints`
+
+``` bash
+python deep_gamma/ops/fingerprint.py --wandb_checkpoint_run 3s8jnyvi --results_path data/ --dataset aspen
+```
+Then rename to `data/07_model_output/aspen` to `aspen_pretrained_fingerints`
 
 
 ## Grid
@@ -96,3 +105,4 @@ grid run --instance_type p3.2xlarge --dependency_file requirements.txt deep_gamm
 * Notes on instances
     - g4dn.xlarge worked well for combisolv data
     - p3.2xlarge is the cheapest machine on grid that has enough RAM for COSMO (61GB)
+
