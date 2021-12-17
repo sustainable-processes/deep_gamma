@@ -19,7 +19,10 @@ class DeepGammaFingerprintArgs(VLEPredictArgs):
         wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
         if self.wandb_checkpoint_run is not None and self.checkpoint_dir is None:
             wandb_base_path = f"{self.wandb_entity}/{self.wandb_project}/{self.wandb_checkpoint_run}"
-            checkpoint_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
+            try:
+                checkpoint_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
+            except ValueError:
+                checkpoint_path = wandb.restore("model_0/model.pt", run_path=wandb_base_path)
             self.checkpoint_path = str(checkpoint_path.name)
         elif self.wandb_checkpoint_run is not None and self.checkpoint_dir is not None:
             ValueError("Can only have one of the following: wandb_checkpoint_run and checkpoint_dir")

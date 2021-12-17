@@ -26,7 +26,7 @@ Combisolv
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base --artifact_name cosmo_base --combisolv
 ```
 
-Fingerpints
+Fingerprints
 ``` bash
 python deep_gamma/ops/fingerprint.py --wandb_checkpoint_run 32vlsf8l --results_path data/ --dataset aspen
 ```
@@ -49,7 +49,7 @@ Create datastore for COSMO
 ```bash
 cd data/
 tar -czvf model_input.tar.gz 05_model_input/*
-grid datastore create --source model_input.tar.gz --name cosmo-gammas
+grid datastore create --source model_input.tar.gz --name gammas
 ```
 
 Run base COSMO model
