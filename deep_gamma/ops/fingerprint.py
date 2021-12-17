@@ -16,6 +16,7 @@ class DeepGammaFingerprintArgs(VLEPredictArgs):
     wandb_project: str = "vle"
     fingerprint_type: Literal['MPN','last_FFN'] = 'MPN'
     def process_args(self) -> None:
+        wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
         if self.wandb_checkpoint_run is not None and self.checkpoint_dir is None:
             wandb_base_path = f"{self.wandb_entity}/{self.wandb_project}/{self.wandb_checkpoint_run}"
             checkpoint_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
