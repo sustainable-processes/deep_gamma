@@ -18,7 +18,7 @@ inputs = {}
 molecule_df = pd.read_csv("data/01_raw/molecule_list.csv")
 
 # Number of batches produced by ../data/cosmo/post_process_gammas.py
-n_batches = step_params.get("n_batches", 194)
+n_batches = step_params.get("n_batches", 191)
 
 # Path to CSV files produced by ../data/cosmo/post_process_gammas.py
 data_path  = pipeline_params.get("data_path", "data/01_raw/cosmo_batches/")
@@ -78,7 +78,7 @@ def main():
     print(f"Total Rows: {df.shape[0]}")
 
     # Write out to file
-    df.to_parquet("/data/02_intermediate/cosmo_data.pq")
+    df.to_parquet("data/02_intermediate/cosmo_data.pq")
 
 if __name__ == "__main__":
     main()
