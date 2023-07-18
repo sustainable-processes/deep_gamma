@@ -60,9 +60,9 @@ def cluster_split_data(molecule_list_df: pd.DataFrame, data: pd.DataFrame):
 @op(out={"molecule_list_with_smiles": Out(), "data": Out()})
 def dev_read_data_cosmo():
     """Dev mode read data in. Problably should change this to use Dagster modes"""
-    data = pd.read_parquet(DATA_PATH / "02_intermediate" / "data_with_smiles.pq")
-    molecule_list_df = pd.read_parquet(
-        DATA_PATH / "02_intermediate" / "molecule_list_with_smiles.pq"
+    data = pd.read_parquet(DATA_PATH / "02_intermediate" / "cosmo_data.pq")
+    molecule_list_df = pd.read_csv(
+        DATA_PATH / "01_raw" / "molecule_list.csv"
     )
     return molecule_list_df, data
 
@@ -82,7 +82,7 @@ def dev_read_data_aspen():
 @graph
 def cluster_split_data_dev():
     """Just the cluster split"""
-    molecule_list_df, data = dev_read_data_aspen()
+    molecule_list_df, data = dev_read_data_cosmo()
     new_data = limit_outputs(data)
     cluster_split_data(molecule_list_df, new_data)
 
@@ -125,7 +125,7 @@ def data_preprocessing():
 #         "gamma_data_loader": parquet_loader.configured(
 #             {
 #                 "path": str(
-#                     DATA_PATH / "02_intermediate" / "concatenated_cosmo_gammas.pq"
+#                     DATA_PATH / "02_intermediate" / "cosmo_data.pq"
 #                 )
 #             }
 #         ),
@@ -137,6 +137,9 @@ def data_preprocessing():
 #         ),
 #         "reporting_mpl_io_manager": mpl_io_manager.configured(
 #             {"base_path": str(DATA_PATH / "08_reporting")}
+#         ),
+#         "model_input_csv_io_manager": csv_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "05_model_input")}
 #         ),
 #     },
 #     config={
@@ -176,6 +179,8 @@ def data_preprocessing():
 #                             "result": {"filename": "cluster_counts.png", "dpi": 300}
 #                         },
 #                     },
+#                     "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
+#                     "merge_cluster_split": {"config": dict(subsample_valid_cont=0.01)},
 #                 }
 #             },
 #         }
@@ -183,79 +188,26 @@ def data_preprocessing():
 # )
 
 ### Graph for COSMO-RS data
-# csplit_job = cluster_split_data_dev.to_job(
-#     resource_defs={
-#         "intermediate_parquet_io_manager": parquet_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "02_intermediate")}
-#         ),
-#         "reporting_pil_io_manager": pil_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "08_reporting")}
-#         ),
-#         "reporting_mpl_io_manager": mpl_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "08_reporting")}
-#         ),
-#         "model_input_np_io_manager": np_io_manager.configured(
-#             {
-#                 "base_path": str(DATA_PATH / "05_model_input"),
-#                 "save_txt": True,
-#                 "compress": False,
-#             }
-#         ),
-#         "model_input_csv_io_manager": csv_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "05_model_input")}
-#         ),
-#     },
-#     config={
-#         "ops": {
-#             "cluster_split_data": {
-#                 "ops": {
-#                     "find_clusters": {
-#                         # Tuned cutoff and min_cluster_size by hand to get
-#                         # a good balance between train, validation and test.
-#                         "config": dict(
-#                             smiles_column="smiles",
-#                             cutoff=0.6,
-#                             cluster_column="cluster",
-#                             min_cluster_size=2,
-#                         )
-#                     },
-#                     "plot_cluster_counts": {
-#                         "config": dict(cluster_column="cluster"),
-#                         "outputs": {
-#                             "result": {"filename": "cluster_counts.png", "dpi": 300}
-#                         },
-#                     },
-#                     "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
-#                     "merge_cluster_split": {"config": dict(subsample_valid_cont=0.01)},
-#                 }
-#             },
-#         },
-#         "loggers": {"console": {"config": {"log_level": "INFO"}}},
-#     },
-# )
-
-
-# Graph for Aspen data
 csplit_job = cluster_split_data_dev.to_job(
     resource_defs={
         "intermediate_parquet_io_manager": parquet_io_manager.configured(
             {"base_path": str(DATA_PATH / "02_intermediate")}
         ),
         "reporting_pil_io_manager": pil_io_manager.configured(
-            {"base_path": str(DATA_PATH / "08_reporting/aspen")}
+            {"base_path": str(DATA_PATH / "08_reporting")}
         ),
         "reporting_mpl_io_manager": mpl_io_manager.configured(
-            {"base_path": str(DATA_PATH / "08_reporting/aspen")}
+            {"base_path": str(DATA_PATH / "08_reporting")}
         ),
         "model_input_np_io_manager": np_io_manager.configured(
             {
-                "base_path": str(DATA_PATH / "05_model_input/aspen"),
+                "base_path": str(DATA_PATH / "05_model_input"),
                 "save_txt": True,
                 "compress": False,
             }
         ),
         "model_input_csv_io_manager": csv_io_manager.configured(
-            {"base_path": str(DATA_PATH / "05_model_input/aspen")}
+            {"base_path": str(DATA_PATH / "05_model_input")}
         ),
     },
     config={
@@ -279,9 +231,7 @@ csplit_job = cluster_split_data_dev.to_job(
                         },
                     },
                     "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
-                    "merge_cluster_split": {"config": dict(
-                        subsample_valid_cont=0.01, features_columns=["x1", "TRange"]
-                    )}   
+                    "merge_cluster_split": {"config": dict(subsample_valid_cont=0.01)},
                 }
             },
             "limit_outputs": {
@@ -291,6 +241,64 @@ csplit_job = cluster_split_data_dev.to_job(
         "loggers": {"console": {"config": {"log_level": "INFO"}}},
     },
 )
+
+
+# Graph for Aspen data
+# csplit_job = cluster_split_data_dev.to_job(
+#     resource_defs={
+#         "intermediate_parquet_io_manager": parquet_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "02_intermediate")}
+#         ),
+#         "reporting_pil_io_manager": pil_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "08_reporting/aspen")}
+#         ),
+#         "reporting_mpl_io_manager": mpl_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "08_reporting/aspen")}
+#         ),
+#         "model_input_np_io_manager": np_io_manager.configured(
+#             {
+#                 "base_path": str(DATA_PATH / "05_model_input/aspen"),
+#                 "save_txt": True,
+#                 "compress": False,
+#             }
+#         ),
+#         "model_input_csv_io_manager": csv_io_manager.configured(
+#             {"base_path": str(DATA_PATH / "05_model_input/aspen")}
+#         ),
+#     },
+#     config={
+#         "ops": {
+#             "cluster_split_data": {
+#                 "ops": {
+#                     "find_clusters": {
+#                         # Tuned cutoff and min_cluster_size by hand to get
+#                         # a good balance between train, validation and test.
+#                         "config": dict(
+#                             smiles_column="smiles",
+#                             cutoff=0.6,
+#                             cluster_column="cluster",
+#                             min_cluster_size=2,
+#                         )
+#                     },
+#                     "plot_cluster_counts": {
+#                         "config": dict(cluster_column="cluster"),
+#                         "outputs": {
+#                             "result": {"filename": "cluster_counts.png", "dpi": 300}
+#                         },
+#                     },
+#                     "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
+#                     "merge_cluster_split": {"config": dict(
+#                         subsample_valid_cont=0.01, features_columns=["x1", "TRange"]
+#                     )}   
+#                 }
+#             },
+#             "limit_outputs": {
+#                 "config": dict(min_value=0.0, max_value=14.0)
+#             }
+#         },
+#         "loggers": {"console": {"config": {"log_level": "INFO"}}},
+#     },
+# )
 
 if __name__ == "__main__":
     csplit_job.execute_in_process()

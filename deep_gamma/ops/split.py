@@ -118,8 +118,9 @@ def find_clusters(context, df: pd.DataFrame) -> Tuple[List, pd.DataFrame]:
 
     # Add clusters to DataFrame
     df[config.cluster_column] = 0
-    for i, cluster in enumerate(clusters):
-        df.at[list(cluster), config.cluster_column] = i
+    df = df.copy()
+    for i, cluster_idx in enumerate(clusters):
+        df.loc[list(cluster_idx)][config.cluster_column] = i
 
     return clusters, df
 
