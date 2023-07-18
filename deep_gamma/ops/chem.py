@@ -1,4 +1,4 @@
-# import wandb
+import wandb
 from chemprop.args import TrainArgs, Metric
 from chemprop.train.cross_validate import cross_validate
 from chemprop.train.run_training import run_training
@@ -103,6 +103,7 @@ class VLETrainArgs(TrainArgs):
             self.init_lr = 0.0001
             self.ffn_hidden_size = 500
 
+
         super().process_args()
 
 
@@ -121,49 +122,41 @@ def train_model():
     args = VLETrainArgs().parse_args()
 
     # Setup wandb
-    grid_info = get_grid_info()
-    if args.experiment_name is None and grid_info["grid_experiment_name"] is not None:
-        args.experiment_name = grid_info["grid_experiment_name"]
-    elif args.experiment_name is None:
-        args.experiment_name = "chem"
-    # wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
-    # wandb.init(entity=args.wandb_entity, project=args.wandb_project, name=args.experiment_name)
-    # wandb.tensorboard.patch(save=False, tensorboardX=True, pytorch=True)
+    wandb.init(entity=args.wandb_entity, project=args.wandb_project, name=args.experiment_name, sync_tensorboard=True)
 
     # Download checkpoint model if specified
-    # if args.wandb_checkpoint_run is not None and args.checkpoint_dir is None:
-    #     wandb_base_path = f"{args.wandb_entity}/{args.wandb_project}/{args.wandb_checkpoint_run}"
-    #     checkpoint_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
-    #     args.checkpoint_path = str(checkpoint_path.name)
-    # elif args.wandb_checkpoint_frzn_run is not None and args.checkpoint_dir is None:
-    #     wandb_base_path = f"{args.wandb_entity}/{args.wandb_project}/{args.wandb_checkpoint_frzn_run}"
-    #     try:
-    #         checkpoint_frzn_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
-    #     except ValueError:
-    #         checkpoint_frzn_path = wandb.restore("model_0/model.pt", run_path=wandb_base_path)
-    #     args.checkpoint_frzn = str(checkpoint_frzn_path.name)
-    # elif args.wandb_checkpoint_run is not None and args.checkpoint_dir is not None:
-    #     ValueError("Can only have one of the following: wandb_checkpoint_run and checkpoint_dir")
+    if args.wandb_checkpoint_run is not None and args.checkpoint_dir is None:
+        wandb_base_path = f"{args.wandb_entity}/{args.wandb_project}/{args.wandb_checkpoint_run}"
+        checkpoint_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
+        args.checkpoint_path = str(checkpoint_path.name)
+    elif args.wandb_checkpoint_frzn_run is not None and args.checkpoint_dir is None:
+        wandb_base_path = f"{args.wandb_entity}/{args.wandb_project}/{args.wandb_checkpoint_frzn_run}"
+        try:
+            checkpoint_frzn_path = wandb.restore("fold_0/model_0/model.pt", run_path=wandb_base_path)
+        except ValueError:
+            checkpoint_frzn_path = wandb.restore("model_0/model.pt", run_path=wandb_base_path)
+        args.checkpoint_frzn = str(checkpoint_frzn_path.name)
+    elif args.wandb_checkpoint_run is not None and args.checkpoint_dir is not None:
+        ValueError("Can only have one of the following: wandb_checkpoint_run and checkpoint_dir")
 
-    # # Don't put all the split data on wandb
-    # d = args.as_dict()
-    # d.pop("crossval_index_sets")
-    # # Add grid information if available
-    # d.update(grid_info)
-    # wandb.config.update(d)
+    # Don't put all the split data on wandb
+    d = args.as_dict()
+    d.pop("crossval_index_sets")
+    # Add grid information if available
+    wandb.config.update(d)
 
-    # # Change save_dir to wandb run directory
-    # args.save_dir = wandb.run.dir
-    # save_dir = Path(args.save_dir)
+    # Change save_dir to wandb run directory
+    args.save_dir = wandb.run.dir
+    save_dir = Path(args.save_dir)
 
-    # # Save files to cloud as the run progresses
-    # files_to_save = [
-    #     save_dir / "fold_0" / "*.csv",
-    #     save_dir / "args.json",
-    #     save_dir / "fold_0/model_0/model.pt",
-    # ]
-    # for file in files_to_save:
-    #     wandb.save(str(file), base_path=str(save_dir))
+    # Save files to cloud as the run progresses
+    files_to_save = [
+        save_dir / "fold_0" / "*.csv",
+        save_dir / "args.json",
+        save_dir / "fold_0/model_0/model.pt",
+    ]
+    for file in files_to_save:
+        wandb.save(str(file), base_path=str(save_dir))
 
     # Run training
     cross_validate(args=args, train_func=run_training)
