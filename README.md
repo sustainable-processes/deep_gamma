@@ -15,11 +15,21 @@
     git submodule update
     ```
 
+# Data generation
+
+See README in`deep_gamma/data/cosmo`
+
 # Preprocessing
 
 
 ```bash
 python deep_gamma/graphs/data_preprocessing.py 
+```
+
+To process polynomial data
+```bash
+python deep_gamma/ops/polynomial.py fit data/02_intermediate/cosmo_data.pq data/03_primary/polynomial
+python deep_gamma/ops/polynomial.py split data/03_primary/polynomial data/05_model_input/cosmo data/05_model_input/cosmo
 ```
 
 Todo:

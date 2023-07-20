@@ -150,7 +150,7 @@ def evaluate():
     # Download models
     model_paths = {}
     model_run_ids = {
-        # "cosmo_base": "zn669uuj",
+        "cosmo_base": "11tv3239",
         # "cosmo_base_pretrained": "1tsddx25",
         # "cosmo_polynomial_pretrained": "3ca6vl9b",
         # "cosmo_polynomial": "39g74a7c"
@@ -162,7 +162,6 @@ def evaluate():
         if args.model_path is not None:
             model_paths["model"] = args.model_path 
         else:
-            wandb.login(key="eddd91debd4aeb24f212695d6c663f504fdb7e3c")
             for name, run_id in model_run_ids.items():
                 if "polynomial" in name:
                     path = "fold_0/model_0/model.pt" 
