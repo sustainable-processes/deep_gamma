@@ -182,22 +182,32 @@ def split(input_dir: str, split_dir: str,  output_dir: str):
     all_polynomial_batches = list(all_polynomial_batches)
     dfs = [pd.read_csv(p) for p in tqdm(all_polynomial_batches)]
     polynomial_df = pd.concat(dfs)
+    main_columns = [
+        "smiles_1","smiles_2",
+        "c0_0","c1_0","c2_0","c3_0","c4_0",
+        "c0_1","c1_1","c2_1","c3_1","c4_1"
+    ]
 
     split_types = ["indp", "mix"]
     split_names = ["valid", "test"]
     holdout_splits = [f"{split_name}_{split_type}" for split_name in split_names for split_type in split_types]
-    splits = ["train"] + holdout_splits
+    splits = ["train", "valid_cont"] + holdout_splits
     logger.info("Creating splits")
+
     for split in tqdm(splits):
         split_df = pd.read_csv(split_dir / f"{split}.csv")
         features_split_df = pd.read_csv(split_dir / f"{split}_features.csv")
         split_df = pd.concat([split_df, features_split_df], axis=1)
+        
         polynomial_split_df = polynomial_df.merge(
             split_df, 
             on=["smiles_1", "smiles_2", "temperature (K)"],
             how="inner"
         ).drop_duplicates()
-        polynomial_split_df.to_csv(output_dir /f"{split}_polynomial.csv" )
+        polynomial_split_features_df = polynomial_split_df[["temperature (K)"]]
+        polynomial_split_df = polynomial_split_df[main_columns]
+        polynomial_split_df.to_csv(output_dir /f"{split}_polynomial.csv")
+        polynomial_split_features_df.to_csv(output_dir /f"{split}_polynomial_temperature.csv")
 
 
 

@@ -235,7 +235,7 @@ csplit_job = cluster_split_data_dev.to_job(
                 }
             },
             "limit_outputs": {
-                "config": dict(min_value=0.0, max_value=14.0)
+                "config": dict(min_value=-30.0, max_value=14.0)
             }
         },
         "loggers": {"console": {"config": {"log_level": "INFO"}}},

@@ -45,7 +45,7 @@ python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base
 
 COSMO polynomial
 ```bash 
-python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_polynomial  --polynomial
+python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_polynomial  --dataset cosmo-polynomial
 ```
 
 Combisolv

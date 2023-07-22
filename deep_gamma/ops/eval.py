@@ -15,6 +15,31 @@ import os
 from chemprop.args import CommonArgs
 import json
 import wandb
+import logging
+
+def setup_logger(log_filename: str = "evaluation.log"):
+    # Logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    # Std out handler
+    std_handler = logging.StreamHandler()
+    std_handler.setLevel(level=logging.ERROR)
+
+    # create a file handler
+    file_handler = logging.FileHandler(log_filename)
+    file_handler.setLevel(level=logging.INFO)
+
+    # create a logging format
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    file_handler.setFormatter(formatter)
+
+    # add handlers
+    logger.addHandler(file_handler)
+    logger.addHandler(std_handler)
+    return logger
 
 def parity_plot(
     df: pd.DataFrame,
@@ -144,6 +169,7 @@ class VLEPredictArgs(CommonArgs):
 
 
 def evaluate():
+    logger = setup_logger()
     # Arguments
     args = VLEPredictArgs().parse_args()
 
@@ -151,12 +177,13 @@ def evaluate():
     model_paths = {}
     model_run_ids = {
         "cosmo_base": "11tv3239",
-        # "cosmo_base_pretrained": "1tsddx25",
-        # "cosmo_polynomial_pretrained": "3ca6vl9b",
-        # "cosmo_polynomial": "39g74a7c"
+        "cosmo_base_pretrained": "7bvtxnej",
+        "cosmo_polynomial": "3vant3l8",
+        "cosmo_polynomial_pretrained": "3h65ldav",
+
         # "aspen_base": "3g7mpeqy",
         # "aspen_base_pretrained": "3msj6d4l",
-        "cosmo_pretrained_depth_4": "3dxpryr1"
+        # "cosmo_pretrained_depth_4": "3dxpryr1"
     }
     if not args.skip_prediction:
         if args.model_path is not None:
@@ -214,9 +241,11 @@ def evaluate():
                 big_df = df.merge(big_df, on=["smiles_1", "smiles_2", "temperature (K)"], how='left')
                 big_df = calculate_activity_coefficients_polynomial(big_df)
 
+
             if args.drop_na:
                 big_df = big_df.dropna()
 
+            logger.info(f"Size of {predict_set} for {model_name}: {big_df.shape[0]}")
             # Calculate scores
             scores = calculate_scores(big_df, ["ln_gamma_1", "ln_gamma_2"])
             scores.update({
@@ -228,6 +257,7 @@ def evaluate():
                 json.dump(scores, f)
 
             # Plots
+            breakpoint()
             if not args.skip_figures:
                 #Parity plot
                 fig, _ = parity_plot(big_df, ["ln_gamma_1", "ln_gamma_2"], format_gammas=args.format_gammas)
