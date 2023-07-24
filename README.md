@@ -43,6 +43,10 @@ COSMO
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base
 ```
 
+``` bash 
+python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_base_pretrained --wandb_checkpoint_frzn_run=2532qdqg
+```
+
 COSMO polynomial
 ```bash 
 python deep_gamma/ops/chem.py --data_dir data/ --experiment_name cosmo_polynomial  --dataset cosmo-polynomial

@@ -176,11 +176,10 @@ def evaluate():
     # Download models
     model_paths = {}
     model_run_ids = {
-        "cosmo_base": "11tv3239",
-        "cosmo_base_pretrained": "7bvtxnej",
-        "cosmo_polynomial": "3vant3l8",
-        "cosmo_polynomial_pretrained": "3h65ldav",
-
+        "DG": "xb1kt6jd",
+        "DG-TLCB": "13wu1s6o",
+        "DGP": "2ib287pj",
+        "DGP-TLCB": "33u9qckt",
         # "aspen_base": "3g7mpeqy",
         # "aspen_base_pretrained": "3msj6d4l",
         # "cosmo_pretrained_depth_4": "3dxpryr1"
@@ -257,7 +256,6 @@ def evaluate():
                 json.dump(scores, f)
 
             # Plots
-            breakpoint()
             if not args.skip_figures:
                 #Parity plot
                 fig, _ = parity_plot(big_df, ["ln_gamma_1", "ln_gamma_2"], format_gammas=args.format_gammas)
@@ -269,7 +267,7 @@ def evaluate():
     
     # Write out scores in publication format
     scores_df = pd.DataFrame(all_scores).round(4)
-    scores_df = scores_df.sort_values(by="holdout_set").set_index([ "holdout_set", "model_name"])
+    scores_df = scores_df.sort_values(by="holdout_set").set_index(["holdout_set", "model_name"])
     scores_df.to_csv(args.reporting_dir / "scores.csv",)
     latex_table = scores_df.to_latex()
     with open(args.reporting_dir / "latex_table.txt", "w") as f:
