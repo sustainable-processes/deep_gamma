@@ -20,7 +20,7 @@ BATCH_SIZE = 1000
 POLYNOMIAL_DEGREE = 4
 
 
-app = typer.Typer()
+app = typer.Typer(pretty_exceptions_enable=False)
 
 def setup_logger(log_filename: str = "polynomial_fitting.log"):
     # Logging
