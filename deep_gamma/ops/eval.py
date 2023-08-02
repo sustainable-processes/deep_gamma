@@ -140,7 +140,7 @@ class VLEPredictArgs(CommonArgs):
     polynomial: bool = False
     num_workers: int = 4
     results_path: str = "results"
-    format_gammas: bool = False
+    format_gammas: bool = True
     dataset: Literal["cosmo",  "cosmo-polynomial", "aspen"] = "cosmo"
 
     @property
