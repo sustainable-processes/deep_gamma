@@ -55,6 +55,11 @@ logger = logging.getLogger(__name__)
             description="Name of the column to create with the clusters",
             default_value="cluster",
         ),
+        drop_duplicates=Field(
+            bool,
+            description="Whether to drop duplicate SMILES strings before clustering",
+            default_value=True,
+        )
     ),
     out=dict(
         clusters=Out(),
@@ -69,6 +74,9 @@ def find_clusters(context, data: pd.DataFrame) -> Tuple[List, pd.DataFrame]:
     kmeans_args: Optional[Dict[str, Any]] = None
     umap_before_cluster: bool = True
     umap_kwargs: Optional[Dict[str, Any]] = None
+
+    if config.drop_duplicates:
+        data = data.drop_duplicates(subset=config.smiles_column).reset_index()
 
     # Calculate fingerprints
     context.log.info("Calculating fingerprints...")
@@ -255,6 +263,7 @@ def merge_cluster_split(
 ):
     all_indices = {}
     config = RecursiveNamespace(**context.solid_config)
+
     # Create train, valid and test subset molecule_list dfs
     train_mol_df, valid_mol_df, test_mol_df = (
         clusters_df.iloc[train_indx],

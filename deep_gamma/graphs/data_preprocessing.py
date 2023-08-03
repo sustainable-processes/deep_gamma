@@ -127,7 +127,7 @@ csplit_job = cluster_split_data_dev.to_job(
                             "result": {"filename": "cluster_counts.png", "dpi": 300}
                         },
                     },
-                    "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
+                    "cluster_split": {"config": dict(valid_size=0.05, test_size=0.15)},
                     "merge_cluster_split": {"config": dict(subsample_valid_cont=0.01)},
                 }
             },

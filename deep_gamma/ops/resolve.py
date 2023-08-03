@@ -45,13 +45,13 @@ def lookup_smiles(
     """
     config = RecursiveNamespace(**context.solid_config)
 
-    # Check if the smiles column already exists
-    if config.smiles_column in data.columns:
-        any_missing = data[config.smiles_column].isna().any()
-        if not any_missing:
-            return data
-    else:
-        data[config.smiles_column] = ""
+    # # Check if the smiles column already exists
+    # if config.smiles_column in data.columns:
+    #     any_missing = data[config.smiles_column].isna().any()
+    #     if not any_missing:
+    #         return data
+    # else:
+    #     data[config.smiles_column] = ""
 
     # Resolve
     context.log.info("Getting SMILES from Opsin")
