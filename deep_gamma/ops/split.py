@@ -18,22 +18,29 @@ Approach
 
 """
 
-from deep_gamma import RecursiveNamespace, USE_MODIN
-from chemprop.data import generate_scaffold
-from rdkit import Chem, DataStructs
-from rdkit.Chem import AllChem
-from rdkit.ML.Cluster import Butina
-from sklearn.model_selection import GroupShuffleSplit, train_test_split
+from deep_gamma import RecursiveNamespace
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.model_selection import StratifiedShuffleSplit
+from umap import UMAP
+import logging
+from multiprocessing import Pool
+from typing import Callable, List, Union
 
-from dagster import DynamicOut, op, Out, Field, Output, Array
-from PIL.Image import Image
-from tqdm.auto import tqdm
-from typing import List, Tuple, Dict
-from tqdm.auto import tqdm
-import os
+import numpy as np
+from rdkit import Chem
+from rdkit.Chem import AllChem
+from rdkit.DataStructs import ConvertToNumpyArray  # type: ignore
+from tqdm import tqdm
+
+from dagster import op, Out, Field, Output
+from typing import Any, Optional, Tuple, Dict
+
+MORGAN_RADIUS = 2
+MORGAN_NUM_BITS = 2048
+logger = logging.getLogger(__name__)
 
 
 @op(
@@ -42,14 +49,6 @@ import os
             str,
             description="Column containing SMILES strings to use for forming clusters",
             default_value="smiles",
-        ),
-        cutoff=Field(
-            float,
-            description="The cutoff value for tanimoto similarity.  Molecules that are more similar than this will tend to be put in the same dataset.",
-        ),
-        min_cluster_size=Field(
-            int,
-            description="Minimimum size of clusters. Any clusters smaller than this size are combined with the smallest cluster above the minimum cluster size.",
         ),
         cluster_column=Field(
             str,
@@ -64,65 +63,53 @@ import os
         ),
     ),
 )
-def find_clusters(context, df: pd.DataFrame) -> Tuple[List, pd.DataFrame]:
-    """Find clusters using the Butina algorithm"""
+def find_clusters(context, data: pd.DataFrame) -> Tuple[List, pd.DataFrame]:
     config = RecursiveNamespace(**context.solid_config)
-    # Create fingerprints
-    mols = []
-    for smiles in df[config.smiles_column]:
-        try:
-            mols.append(Chem.MolFromSmiles(smiles))
-        except TypeError:
-            context.log.error(f"Could not convert {smiles} to RDKit molecule")
-    fps = [AllChem.GetMorganFingerprintAsBitVect(x, 2, 1024) for x in mols]
+    data = data.copy().reset_index(drop=True)
+    kmeans_args: Optional[Dict[str, Any]] = None
+    umap_before_cluster: bool = True
+    umap_kwargs: Optional[Dict[str, Any]] = None
 
-    # Calculate distances
-    dists = []
-    nfps = len(fps)
-    for i in range(1, nfps):
-        sims = DataStructs.BulkTanimotoSimilarity(fps[i], fps[:i])
-        dists.extend([1 - x for x in sims])
+    # Calculate fingerprints
+    context.log.info("Calculating fingerprints...")
+    fps = compute_morgan_fingerprints(data[config.smiles_column])
 
-    # Calculate clusters
-    clusters = Butina.ClusterData(dists, nfps, config.cutoff, isDistData=True)
-    clusters = sorted(clusters, key=lambda x: -len(x))
-    cluster_counts = pd.Series([len(cluster) for cluster in clusters])
+    # K-means clustering
+    context.log.info("Clustering data...")
+    kmeans_kwargs = kmeans_args if kmeans_args is not None else {}
+    if umap_before_cluster:
+        if umap_kwargs is None:
+            umap_kwargs = {}
+        if "n_components" not in umap_kwargs:
+            umap_kwargs["n_components"] = 5
+        if "n_neighbors" not in umap_kwargs:
+            umap_kwargs["n_neighbors"] = 15
+        if "min_dist" not in umap_kwargs:
+            umap_kwargs["min_dist"] = 0.1
+        if "metric" not in umap_kwargs:
+            umap_kwargs["metric"] = "jaccard"
+        if "random_state" not in umap_kwargs:
+            umap_kwargs["random_state"] = 0
+        reducer = UMAP(**umap_kwargs)
+        X: np.ndarray = reducer.fit_transform(fps)  # type: ignore
+        num_nan = np.isnan(X).sum()
+        if num_nan > 0:
+            raise ValueError("UMAP returned NaN values.")
+    else:
+        X = fps
+    kmeans = KMeans(**kmeans_kwargs)
+    kmeans.fit(X)
 
-    # Make sure there are clusters above min_cluster_size
-    if (cluster_counts < config.min_cluster_size).all():
-        raise ValueError(
-            f"All clusters are less than minimum cluster size {config.min_cluster_size}. Consider increasing cutoff to make clusters bigger."
-        )
-    # Combine small clusters
-    elif (cluster_counts < config.min_cluster_size).any():
-        # Identify the clusters smaller than the minimum size
-        small_cluster_counts = cluster_counts[cluster_counts < config.min_cluster_size]
+    # Cluster labels
+    cluster_labels = kmeans.labels_ + 1  # type: ignore
+    data[config.cluster_column] = cluster_labels
 
-        for i in small_cluster_counts.index:
-            # Find the smallest cluster bigger than the minimum size (receiving cluster)
-            receiving_cluster_index = (
-                cluster_counts[cluster_counts > config.min_cluster_size]
-                .sort_values(ascending=True)
-                .index[0]
-            )
+    # Clusters
+    clusters = []
+    for cluster in range(1, cluster_labels.max() + 1):
+        clusters.append(data[data[config.cluster_column] == cluster].index.tolist())
 
-            # Add the small cluster to the receiving cluster identified above
-            clusters[receiving_cluster_index] = set(
-                list(clusters[receiving_cluster_index]) + list(clusters[i])
-            )
-
-            # Make the small cluster a null cluster
-            clusters[i] = set()
-        # Remove null clusters
-        clusters = [cluster for cluster in clusters if len(cluster) != 0]
-
-    # Add clusters to DataFrame
-    df[config.cluster_column] = 0
-    df = df.copy()
-    for i, cluster_idx in enumerate(clusters):
-        df.loc[list(cluster_idx)][config.cluster_column] = i
-
-    return clusters, df
+    return clusters, data
 
 
 @op(
@@ -145,27 +132,6 @@ def plot_cluster_counts(context, df: pd.DataFrame):
     ax.set_xticklabels([])
     return fig
 
-def check_range(series, min_value, max_value,):
-    return (series < max_value).all() and (series >= min_value).all()
-
-@op(
-    config_schema=dict(
-        min_value=Field(float, description="Minimum value for output"),
-        max_value=Field(float, description="Max value for output"),
-    )
-)
-def limit_outputs(context, df: pd.DataFrame):
-    # Limit outputs to minimum and maximum values
-    config = RecursiveNamespace(**context.solid_config)
-    groups = []
-    for _, group in df.groupby(["smiles_1", "smiles_2"]):
-        check = (
-            check_range(group["ln_gamma_1"], config.min_value, config.max_value) and 
-            check_range(group["ln_gamma_2"], config.min_value, config.max_value)
-        )
-        if check:
-            groups.append(group)
-    return pd.concat(groups, axis=0).reset_index()
 
 @op(
     config_schema=dict(
@@ -206,7 +172,6 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
 
 @op(
     config_schema=dict(
-        # cluster_df_smiles_column=str,
         subsample_valid_cont=Field(float),
         smiles_columns=Field(
             [str],
@@ -277,9 +242,9 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
 )
 def merge_cluster_split(
     context,
-    train_inds: list,
-    valid_inds: list,
-    test_inds: list,
+    train_indx: list,
+    valid_indx: list,
+    test_indx: list,
     clusters_df: pd.DataFrame,
     data: pd.DataFrame,
 ):
@@ -287,9 +252,9 @@ def merge_cluster_split(
     config = RecursiveNamespace(**context.solid_config)
     # Create train, valid and test subset molecule_list dfs
     train_mol_df, valid_mol_df, test_mol_df = (
-        clusters_df.iloc[train_inds],
-        clusters_df.iloc[valid_inds],
-        clusters_df.iloc[test_inds],
+        clusters_df.iloc[train_indx],
+        clusters_df.iloc[valid_indx],
+        clusters_df.iloc[test_indx],
     )
 
     # Assign pairs which only contain molecules from the train set to train set
@@ -308,8 +273,8 @@ def merge_cluster_split(
     )
     mask = np.zeros(n_train_base, dtype=bool)
     mask[train_select] = True
-    all_indices['train'] = train_base_indices[mask]
-    all_indices['valid_cont'] = train_base_indices[~mask]
+    all_indices["train"] = train_base_indices[mask]
+    all_indices["valid_cont"] = train_base_indices[~mask]
     context.log.info(f"Training set size: {len(all_indices['train'])}")
     context.log.info(f"Validation CONT size: {len(all_indices['valid_cont'] )}")
 
@@ -351,13 +316,9 @@ def merge_cluster_split(
 
     for name, ind in all_indices.items():
         yield Output(
-            data.iloc[ind][config.smiles_columns + config.target_columns],
-            name
+            data.iloc[ind][config.smiles_columns + config.target_columns], name
         )
-        yield Output(
-            data.iloc[ind][config.features_columns],
-            f"{name}_features"
-        )
+        yield Output(data.iloc[ind][config.features_columns], f"{name}_features")
 
 
 @op(
@@ -391,147 +352,85 @@ def chemprop_split_molecules_features(context, data: pd.DataFrame):
     )
 
 
-def scaffold_groups(mols: List[str]):
-    """Find all the scaffolds and reference each one by index
-
-    Parameters
-    ---------
-    mols: list of str
-        The list of smiles strings
-
-    Returns
-    -------
-    scaffolds, scaffold_indices
-        scaffolds is a dictionary mapping scaffold to index.
-        scaffold_indices gives the index of the scaffold for each molecule
-    """
-    scaffolds = dict()
-    scaffold_num = 0
-    scaffold_list = [""] * len(mols)
-    for i, mol in tqdm(enumerate(mols), total=len(mols)):
-        scaffold = generate_scaffold(mol)
-        if scaffold not in scaffolds:
-            scaffolds[scaffold] = scaffold_num
-            scaffold_num += 1
-        scaffold_list[i] = scaffold
-    scaffold_indices = [scaffolds[s] for s in scaffold_list]
-    return scaffolds, scaffold_indices
+def check_range(
+    series,
+    min_value,
+    max_value,
+):
+    return (series < max_value).all() and (series >= min_value).all()
 
 
 @op(
     config_schema=dict(
-        scaffold_columns=Field(
-            [str],
-            description="List of columns that should be used for generating scaffolds",
-        )
-    ),
-    out=dict(
-        df_with_scaffolds=Out(
-            pd.DataFrame, io_manager_key="intermediate_parquet_io_manager"
-        ),
-        scaffolds=Out(Dict[str, int]),
-    ),
-)
-def get_scaffolds(context, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, int]]:
-    """Get the scaffolds for all the unique molecules in in `scaffold_columns`"""
-    scaffold_columns = context.solid_config["scaffold_columns"]
-
-    # Get scaffolds
-    unique_mols = np.concatenate([pd.unique(df[col]) for col in scaffold_columns])
-    scaffolds, scaffold_indices = scaffold_groups(unique_mols)
-    context.log.info(f"Number of scaffolds: {len(scaffolds)}")
-
-    # Merge scaffolds
-    scaffold_df = pd.DataFrame(
-        {"scaffold_smiles": unique_mols, "scaffold_index": scaffold_indices}
+        min_value=Field(float, description="Minimum value for output"),
+        max_value=Field(float, description="Max value for output"),
     )
-    for i, col in enumerate(scaffold_columns):
-        df = df.merge(scaffold_df, left_on=col, right_on="scaffold_smiles", how="left")
-        df = df.rename(columns={"scaffold_smiles": f"scaffold_smiles_{i}"})
-    return df, scaffolds
-
-
-@op(
-    config_schema=dict(
-        test_size=Field(float, description="Size of the test set"),
-        valid_size=Field(float, description="Size of the validation set."),
-    ),
-    out=dict(
-        train_indices=Out(np.ndarray),
-        valid_indices=Out(np.ndarray),
-        test_indices=Out(np.ndarray),
-    ),
 )
-def scaffold_split(
-    context, df: pd.DataFrame, scaffolds: Dict[str, int]
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def limit_outputs(context, df: pd.DataFrame):
+    # Limit outputs to minimum and maximum values
     config = RecursiveNamespace(**context.solid_config)
-
-    # Train-test split
-    splitter = GroupShuffleSplit(
-        n_splits=2, test_size=config.test_size, random_state=1995
-    )
-    train_indices, test_indices = next(
-        splitter.split(X=df, groups=df["scaffold_index"])
-    )
-
-    # Train-validation split
-    valid_train_size = config.valid_size * len(df) / len(train_indices)
-    train_df = df.iloc[train_indices]
-    splitter = GroupShuffleSplit(
-        n_splits=2, test_size=valid_train_size, random_state=1995
-    )
-    train_indices, valid_indices = next(
-        splitter.split(X=train_df, groups=train_df["scaffold_index"])
-    )
-
-    # Logging
-    context.log.info(f"Training set size: ~{len(train_indices)/1e6:.0f}M")
-    context.log.info(f"Validation set size: ~{len(valid_indices)/1e3:.0f}k")
-    context.log.info(f"Test set size: ~{len(test_indices)/1e3:.0f}k")
-    null_scaffold = scaffolds[""]
-    scaffold_counts = df["scaffold_index"].value_counts()
-    context.log.info(
-        f"Number of records that match the null scaffold: ~{scaffold_counts.loc[null_scaffold]/1e6:.0f}M"
-    )
-    return train_indices, valid_indices, test_indices
+    groups = []
+    for _, group in df.groupby(["smiles_1", "smiles_2"]):
+        check = check_range(
+            group["ln_gamma_1"], config.min_value, config.max_value
+        ) and check_range(group["ln_gamma_2"], config.min_value, config.max_value)
+        if check:
+            groups.append(group)
+    return pd.concat(groups, axis=0).reset_index()
 
 
-@op(out=Out(io_manager_key="reporting_pil_io_manager"))
-def visualize_scaffolds(
-    df: pd.DataFrame, scaffolds: dict, selection_indices: np.ndarray = None
-) -> Image:
-    """Visualize scaffolds with counts of scaffolds below each molecule"""
-    if selection_indices is not None:
-        df = df.iloc[selection_indices]
-    scaffold_counts = df["scaffold_index"].value_counts()
-    null_scaffold = scaffolds[""]
-    scaffold_idx_to_smiles = {idx: scaffold for scaffold, idx in scaffolds.items()}
-    img = Chem.Draw.MolsToGridImage(
+def _canonicalize_smiles(smi) -> Union[str, None]:
+    try:
+        return Chem.CanonSmiles(smi)
+    except:
+        return None
+
+
+def compute_morgan_fingerprint(
+    mol: Union[str, Chem.Mol],  # type: ignore
+    radius: int = MORGAN_RADIUS,
+    num_bits: int = MORGAN_NUM_BITS,
+) -> Union[np.ndarray, None]:
+    """Generates a binary Morgan fingerprint for a molecule.
+
+    :param mol: A molecule (i.e., either a SMILES string or an RDKit molecule).
+    :param radius: Morgan fingerprint radius.
+    :param num_bits: Number of bits in Morgan fingerprint.
+    :return: A 1D boolean numpy array (num_bits,) containing the binary Morgan fingerprint.
+    """
+    try:
+        mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol  # type: ignore
+        morgan_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)  # type: ignore
+        morgan_fp = np.zeros((1,))
+        ConvertToNumpyArray(morgan_vec, morgan_fp)
+        morgan_fp = morgan_fp.astype(bool)
+    except Exception as e:
+        logger.warning(f"Could not compute Morgan fingerprint for molecule: {mol}.")
+        morgan_fp = np.zeros((num_bits,), dtype=bool)
+
+    return morgan_fp
+
+
+def compute_morgan_fingerprints(
+    mols: List[str],
+    radius: int = MORGAN_RADIUS,
+    num_bits: int = MORGAN_NUM_BITS,
+) -> np.ndarray:
+    """Generates molecular fingerprints for each molecule in a list of molecules (in parallel).
+
+    :param mols: A list of molecules (i.e., either a SMILES string or an RDKit molecule).
+    :param radius: Morgan fingerprint radius.
+    :param num_bits: Number of bits in Morgan fingerprint.
+    :return: A 2D numpy array (num_molecules, num_features) containing the fingerprints for each molecule.
+    """
+    return np.array(
         [
-            Chem.MolFromSmiles(scaffold_idx_to_smiles[idx])
-            for idx in scaffold_counts.index
-            if idx != null_scaffold
+            compute_morgan_fingerprint(mol, radius=radius, num_bits=num_bits)
+            for mol in tqdm(
+                mols,
+                total=len(mols),
+                desc=f"Generating morgan fingerprints",
+            )
         ],
-        molsPerRow=6,
-        subImgSize=(200, 200),
-        legends=[
-            str(scaffold_counts.iloc[i])
-            for i in range(len(scaffold_counts))
-            if scaffold_counts.index[i] != null_scaffold
-        ],
-        returnPNG=False,
+        dtype=float,
     )
-    return img
-
-
-@op(out=Out(io_manager_key="reporting_mpl_io_manager"))
-def plot_scaffold_counts(df: pd.DataFrame):
-    """Bar plot of scaffold frequency"""
-    fig, ax = plt.subplots(1)
-    df["scaffold_index"].value_counts().plot.bar(ax=ax)
-    ax.set_xlabel("Scaffolds")
-    ax.set_ylabel("Counts")
-    ax.set_yscale("log")
-    ax.set_xticklabels([])
-    return fig

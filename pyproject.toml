@@ -30,6 +30,7 @@ chemprop = { path = "chemprop", develop = true }
 thermo = "^0.2.10"
 seaborn = "^0.11.2"
 rdkit = "^2023.3.2"
+umap-learn = "^0.5.3"
 
 
 [tool.poetry.dev-dependencies]

@@ -1,36 +1,26 @@
-from dagster import op, graph, GraphOut, InputDefinition, Out, ExperimentalWarning
+from dagster import op, graph, GraphOut, Out
 from deep_gamma.ops import (
     lookup_smiles,
     resolve_smiles,
-    get_scaffolds,
-    limit_outputs,
-    scaffold_split,
-    visualize_scaffolds,
-    plot_scaffold_counts,
     find_clusters,
+    cluster_split,  
+    limit_outputs,
     plot_cluster_counts,
-    cluster_split,
-    chemprop_split_molecules_features,
 )
 from deep_gamma.ops.split import merge_cluster_split
 from deep_gamma.resources import (
     parquet_io_manager,
-    parquet_loader,
-    csv_loader,
     csv_io_manager,
     pil_io_manager,
     mpl_io_manager,
     np_io_manager,
 )
 from deep_gamma import DATA_PATH
-
 import pandas as pd
-from typing import Union
-from pathlib import Path
 
 
 @graph(
-    out=dict(molecule_list_df=GraphOut(), data=GraphOut()),
+    out=dict(data=GraphOut()),
 )
 def resolve_data():
     """Resolve data to find all the SMILES strings"""
@@ -40,7 +30,7 @@ def resolve_data():
     # Resolve SMILES
     df = resolve_smiles(molecule_list_df=molecule_list_df)
 
-    return {"molecule_list_df": molecule_list_df, "data": df}
+    return { "data": df}
 
 
 @graph
@@ -58,8 +48,9 @@ def cluster_split_data(molecule_list_df: pd.DataFrame, data: pd.DataFrame):
 
 
 @op(out={"molecule_list_with_smiles": Out(), "data": Out()})
-def dev_read_data_cosmo():
+def dev_read_data_cosmo(context):
     """Dev mode read data in. Problably should change this to use Dagster modes"""
+    context.log.info("Reading in data")
     data = pd.read_parquet(DATA_PATH / "02_intermediate" / "cosmo_data.pq")
     molecule_list_df = pd.read_csv(
         DATA_PATH / "01_raw" / "molecule_list.csv"
@@ -84,108 +75,8 @@ def cluster_split_data_dev():
     """Just the cluster split"""
     molecule_list_df, data = dev_read_data_cosmo()
     new_data = limit_outputs(data)
-    cluster_split_data(molecule_list_df, new_data)
+    cluster_split_data(molecule_list_df,new_data)
 
-@graph
-def scaffold_split_data(df: pd.DataFrame):
-    """Split data based on scaffolds. Abandonbed in favor of clustering."""
-    # Get scaffolds
-    df, scaffolds = get_scaffolds(df)
-
-    # Split based on scaffolds
-    train_indices, valid_indices, test_indices = scaffold_split(df, scaffolds)
-
-    # Visualize scaffolds
-    vs_train = visualize_scaffolds.alias("visualize_scaffolds_train")
-    vs_valid = visualize_scaffolds.alias("visualize_scaffolds_valid")
-    vs_test = visualize_scaffolds.alias("visualize_scaffolds_test")
-    vs_train(df, scaffolds, train_indices)
-    vs_valid(df, scaffolds, valid_indices)
-    vs_test(df, scaffolds, test_indices)
-    plot_scaffold_counts(df)
-
-
-@graph
-def data_preprocessing():
-    """The full data preprocessing graph"""
-    # Resolve CAS numbers to SMILES and save for chemprop
-    molecule_list_df, data = resolve_data()
-    chemprop_split_molecules_features(data)
-
-    # Two alternative splits, ended up going with cluster split
-    scaffold_split(data)
-    cluster_split_data(molecule_list_df, data)
-
-
-# dp_job = data_preprocessing.to_job(
-#     resource_defs={
-#         "molecule_list_loader": csv_loader.configured(
-#             {"path": str(DATA_PATH / "01_raw" / "molecule_list.csv")}
-#         ),
-#         "gamma_data_loader": parquet_loader.configured(
-#             {
-#                 "path": str(
-#                     DATA_PATH / "02_intermediate" / "cosmo_data.pq"
-#                 )
-#             }
-#         ),
-#         "intermediate_parquet_io_manager": parquet_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "02_intermediate")}
-#         ),
-#         "reporting_pil_io_manager": pil_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "08_reporting")}
-#         ),
-#         "reporting_mpl_io_manager": mpl_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "08_reporting")}
-#         ),
-#         "model_input_csv_io_manager": csv_io_manager.configured(
-#             {"base_path": str(DATA_PATH / "05_model_input")}
-#         ),
-#     },
-#     config={
-#         "ops": {
-#             "resolve_data": {
-#                 "ops": {
-#                     "resolve_smiles": {
-#                         "config": dict(
-#                             input_column_prefix="cas_number",
-#                             smiles_column_prefix="smiles",
-#                             molecule_df_input_column="cas_number",
-#                             molecule_df_smiles_column="smiles",
-#                             lookup_failed_smiles_as_name=True,
-#                             molecule_list_df_name_column="cosmo_name",
-#                         ),
-#                     },
-#                     "lookup_smiles": {
-#                         "config": dict(
-#                             input_column="cas_number", smiles_column="smiles"
-#                         )
-#                     },
-#                 },
-#             },
-#             "cluster_split_data": {
-#                 "ops": {
-#                     "find_clusters": {
-#                         "config": dict(
-#                             smiles_column="smiles",
-#                             cutoff=0.8,
-#                             cluster_column="cluster",
-#                             min_cluster_size=10,
-#                         )
-#                     },
-#                     "plot_cluster_counts": {
-#                         "config": dict(cluster_column="cluster"),
-#                         "outputs": {
-#                             "result": {"filename": "cluster_counts.png", "dpi": 300}
-#                         },
-#                     },
-#                     "cluster_split": {"config": dict(valid_size=0.05, test_size=0.05)},
-#                     "merge_cluster_split": {"config": dict(subsample_valid_cont=0.01)},
-#                 }
-#             },
-#         }
-#     },
-# )
 
 ### Graph for COSMO-RS data
 csplit_job = cluster_split_data_dev.to_job(
@@ -215,13 +106,10 @@ csplit_job = cluster_split_data_dev.to_job(
             "cluster_split_data": {
                 "ops": {
                     "find_clusters": {
-                        # Tuned cutoff and min_cluster_size by hand to get
-                        # a good balance between train, validation and test.
                         "config": dict(
                             smiles_column="smiles",
-                            cutoff=0.6,
                             cluster_column="cluster",
-                            min_cluster_size=2,
+     
                         )
                     },
                     "plot_cluster_counts": {

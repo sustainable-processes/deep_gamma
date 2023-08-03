@@ -7,7 +7,6 @@ from chemprop.args import FingerprintArgs
 import os
 from typing import List, Optional
 from typing_extensions import Literal
-from pathlib import Path
 import wandb
 
 class DeepGammaFingerprintArgs(VLEPredictArgs):
