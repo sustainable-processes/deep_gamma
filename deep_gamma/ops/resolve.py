@@ -3,14 +3,16 @@ Resolve molecules in any representation to SMILES strings that can be read by ch
 
 """
 import pandas as pd
-import cirpy
+from pura.resolvers import resolve_identifiers
+from pura.compound import CompoundIdentifierType
+from pura.services import PubChem, CIR, CAS, Opsin
 from tqdm.auto import tqdm
 from dagster import op, In, Out, Field
 from deep_gamma import RecursiveNamespace
 
 
 @op(
-    ins=dict(data=In(root_manager_key="molecule_list_loader")),
+    # ins=dict(data=In(root_manager_key="molecule_list_loader")),
     out=dict(
         molecule_list_with_smiles=Out(io_manager_key="intermediate_parquet_io_manager")
     ),
@@ -52,18 +54,38 @@ def lookup_smiles(
         data[config.smiles_column] = ""
 
     # Resolve
-    smiles = [
-        cirpy.resolve(row[config.input_column], "smiles")
-        for _, row in tqdm(data.iterrows(), total=data.shape[0])
-        if row["smiles"] == ""
-    ]
-    data[config.smiles_column] = smiles
+    context.log.info("Getting SMILES from Opsin")
+    resolved = resolve_identifiers(
+        data[config.input_column].tolist(),
+        input_identifer_type=CompoundIdentifierType.NAME,
+        output_identifier_type=CompoundIdentifierType.SMILES,
+        services=[Opsin()],
+        agreement=1,
+        silent=True,
+    )
+    resolved_df = pd.DataFrame([
+        [
+            name, smiles_list[0]] 
+            for name, smiles_list in resolved
+            if len(smiles_list) > 0
+        ],
+        columns=["name", "smiles"]
+    )
+    new_data = data.merge(
+        resolved_df, left_on=config.input_column, right_on="name", how="left"
+    )
+    if config.smiles_column in data.columns:
+        new_data[f"{config.smiles_column}_y"] = new_data[f"{config.smiles_column}_y"].fillna(
+            new_data[f"{config.smiles_column}_x"]
+        )
+        new_data = new_data.drop([f"{config.smiles_column}_x"], axis=1)
+        new_data = new_data.rename(columns={f"{config.smiles_column}_y": config.smiles_column})
 
-    return data
+    return new_data
 
 
 @op(
-    ins=dict(df=In(root_manager_key="gamma_data_loader")),
+    # ins=dict(df=In(root_manager_key="gamma_data_loader")),
     out=dict(data_with_smiles=Out(io_manager_key="intermediate_parquet_io_manager")),
     config_schema=dict(
         input_column_prefix=Field(str, description="Merge column prefix for df"),
@@ -97,13 +119,21 @@ def resolve_smiles(
 
     # Drop unncessary columns to make merge faster
     drop_columns = molecule_list_df.columns.tolist()
-    drop_columns.remove(config.molecule_df_smiles_column)
-    drop_columns.remove(config.molecule_df_input_column)
-    if config.molecule_list_df_name_column is not None:
+    if config.molecule_df_smiles_column in drop_columns:
+        drop_columns.remove(config.molecule_df_smiles_column)
+    if config.molecule_df_input_column in drop_columns:
+        drop_columns.remove(config.molecule_df_input_column)
+    if config.molecule_list_df_name_column in drop_columns:
         drop_columns.remove(config.molecule_list_df_name_column)
     molecule_list_df = molecule_list_df.drop(drop_columns, axis=1)
 
+    # Remove columns that already exist
+    for i in [1, 2]:
+        if f"{config.smiles_column_prefix}_{i}" in new_df.columns:
+            new_df = new_df.drop(f"{config.smiles_column_prefix}_{i}", axis=1)
+
     # Do the merge
+    context.log.info("Merging resolved SMILES")
     for i in [1, 2]:
         new_df = pd.merge(
             new_df,

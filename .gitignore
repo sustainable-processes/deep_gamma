@@ -1,6 +1,9 @@
 # wandb
 wandb/
 data/
+data_old/
+results/
+.vscode/
 
 .DS_Store
 

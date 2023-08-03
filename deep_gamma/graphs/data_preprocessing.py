@@ -19,29 +19,21 @@ from deep_gamma import DATA_PATH
 import pandas as pd
 
 
-@graph(
-    out=dict(data=GraphOut()),
-)
-def resolve_data():
-    """Resolve data to find all the SMILES strings"""
-    # Lookup missing SMILES
-    molecule_list_df = lookup_smiles()
-
-    # Resolve SMILES
-    df = resolve_smiles(molecule_list_df=molecule_list_df)
-
-    return { "data": df}
 
 
 @graph
 def cluster_split_data(molecule_list_df: pd.DataFrame, data: pd.DataFrame):
     """Split data into clusters and save split indices"""
+    # Resolve data
+    updated_molecule_list_df = lookup_smiles(molecule_list_df)
+    new_data = resolve_smiles(data, updated_molecule_list_df)
+
     # Cluster data using molecule list
-    clusters, clusters_df = find_clusters(molecule_list_df)
+    clusters, clusters_df = find_clusters(updated_molecule_list_df)
 
     # Split data by clusters
     train_inds, valid_inds, test_inds = cluster_split(clusters, clusters_df)
-    merge_cluster_split(train_inds, valid_inds, test_inds, clusters_df, data)
+    merge_cluster_split(train_inds, valid_inds, test_inds, clusters_df, new_data)
 
     # Visualize clusters
     plot_cluster_counts(clusters_df)
@@ -76,6 +68,7 @@ def cluster_split_data_dev():
     molecule_list_df, data = dev_read_data_cosmo()
     new_data = limit_outputs(data)
     cluster_split_data(molecule_list_df,new_data)
+    
 
 
 ### Graph for COSMO-RS data
@@ -105,6 +98,22 @@ csplit_job = cluster_split_data_dev.to_job(
         "ops": {
             "cluster_split_data": {
                 "ops": {
+                    "lookup_smiles": {
+                        "config": dict(
+                            input_column="solvent_name_1", smiles_column="smiles"
+                        )
+                    },
+                    "resolve_smiles": {
+                        "config": dict(
+                            input_column_prefix="cas_number",
+                            smiles_column_prefix="smiles",
+                            molecule_df_input_column="cas_number",
+                            molecule_df_smiles_column="smiles",
+                            lookup_failed_smiles_as_name=False,
+                            molecule_list_df_name_column="solvent_name_1",
+                        ),
+                    },
+
                     "find_clusters": {
                         "config": dict(
                             smiles_column="smiles",

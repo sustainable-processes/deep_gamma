@@ -76,7 +76,7 @@ def find_clusters(context, data: pd.DataFrame) -> Tuple[List, pd.DataFrame]:
 
     # K-means clustering
     context.log.info("Clustering data...")
-    kmeans_kwargs = kmeans_args if kmeans_args is not None else {}
+    kmeans_kwargs = kmeans_args if kmeans_args is not None else {"random_state": 0}
     if umap_before_cluster:
         if umap_kwargs is None:
             umap_kwargs = {}
@@ -188,6 +188,11 @@ def cluster_split(context, clusters: list, data: pd.DataFrame):
             description="List of extra features columns",
             default_value=["temperature (K)", "x(1)"],
         ),
+        metadata_columns=Field(
+            [str],
+            description="List of extra metadata columns to keep",
+            default_value=["cas_number_1", "cas_number_2", "names_1", "names_2"],
+        )
     ),
     out=dict(
         train=Out(
@@ -316,7 +321,7 @@ def merge_cluster_split(
 
     for name, ind in all_indices.items():
         yield Output(
-            data.iloc[ind][config.smiles_columns + config.target_columns], name
+            data.iloc[ind][config.smiles_columns + config.target_columns + config.metadata_columns], name
         )
         yield Output(data.iloc[ind][config.features_columns], f"{name}_features")
 
@@ -362,6 +367,7 @@ def check_range(
 
 @op(
     config_schema=dict(
+        
         min_value=Field(float, description="Minimum value for output"),
         max_value=Field(float, description="Max value for output"),
     )
@@ -370,7 +376,7 @@ def limit_outputs(context, df: pd.DataFrame):
     # Limit outputs to minimum and maximum values
     config = RecursiveNamespace(**context.solid_config)
     groups = []
-    for _, group in df.groupby(["smiles_1", "smiles_2"]):
+    for _, group in df.groupby(["cas_number_1", "cas_number_2"]):
         check = check_range(
             group["ln_gamma_1"], config.min_value, config.max_value
         ) and check_range(group["ln_gamma_2"], config.min_value, config.max_value)
