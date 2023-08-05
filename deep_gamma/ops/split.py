@@ -324,7 +324,7 @@ def merge_cluster_split(
     context.log.info(f"Test MIX size: {len(all_indices['test_mix'])}")
     all_indices["test_indp"] = data[
         (data["smiles_1"].isin(test_mol_df["smiles"]))
-        & (data["smiles_1"].isin(test_mol_df["smiles"]))
+        & (data["smiles_2"].isin(test_mol_df["smiles"]))
     ].index.to_numpy()
     context.log.info(f"Test INDP size: {len(all_indices['test_indp'])}")
 
