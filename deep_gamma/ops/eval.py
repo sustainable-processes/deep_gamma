@@ -51,19 +51,20 @@ def parity_plot(
     fig, axes = plt.subplots(1, len(target_columns), figsize=(5*len(target_columns), 5))
     if type(axes) != np.ndarray:
         axes = [axes]
-    fig.subplots_adjust(wspace=0.2)
+    fig.subplots_adjust(wspace=0.4)
     c = "#025b66"
+    axis_fontsize = 16
     for i, target_column in enumerate(target_columns):
         # Parity plot
         axes[i].scatter(
             df[target_column], df[f"{target_column}_pred"], alpha=alpha, c=c
         )
         if not format_gammas:
-            axes[i].set_xlabel(f"Measured {target_column}")
-            axes[i].set_ylabel(f"Predicted {target_column}")
+            axes[i].set_xlabel(f"Measured {target_column}", fontsize=axis_fontsize)
+            axes[i].set_ylabel(f"Predicted {target_column}", fontsize=axis_fontsize)
         else:
-            axes[i].set_xlabel(f"Measured $\ln \gamma_{i+1}$")
-            axes[i].set_ylabel(f"Predicted $\ln \gamma_{i+1}$")
+            axes[i].set_xlabel(f"Measured $\ln \gamma_{i+1}$", fontsize=axis_fontsize)
+            axes[i].set_ylabel(f"Predicted $\ln \gamma_{i+1}$", fontsize=axis_fontsize)
         max_val = df[target_column].max()
         min_val = df[target_column].min()
 
@@ -176,10 +177,10 @@ def evaluate():
     # Download models
     model_paths = {}
     model_run_ids = {
-        "DG": "xb1kt6jd",
-        "DG-TLCB": "13wu1s6o",
-        "DGP": "2ib287pj",
-        "DGP-TLCB": "33u9qckt",
+        "DG": "20mq61e5",
+        "DG-TLCB": "3bll2ycq",
+        # "DGP": "2ib287pj",
+        # "DGP-TLCB": "33u9qckt",
         # "aspen_base": "3g7mpeqy",
         # "aspen_base_pretrained": "3msj6d4l",
         # "cosmo_pretrained_depth_4": "3dxpryr1"
