@@ -32,6 +32,7 @@ seaborn = "^0.11.2"
 rdkit = "^2023.3.2"
 umap-learn = "^0.5.3"
 pura = "^0.2.4"
+beautifulsoup4 = "^4.12.2"
 
 
 [tool.poetry.dev-dependencies]

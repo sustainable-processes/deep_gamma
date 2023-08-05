@@ -65,6 +65,7 @@ def parity_plot(
         else:
             axes[i].set_xlabel(f"Measured $\ln \gamma_{i+1}$", fontsize=axis_fontsize)
             axes[i].set_ylabel(f"Predicted $\ln \gamma_{i+1}$", fontsize=axis_fontsize)
+        axes[i].tick_params(direction="in", which="both", labelsize=12)
         max_val = df[target_column].max()
         min_val = df[target_column].min()
 
@@ -78,6 +79,7 @@ def parity_plot(
                 mae_patch = mpatches.Patch(label="MAE = {:.3f}".format(scores[f"{target_column}_mae"]), color=c)
                 r2_score =  mpatches.Patch(label=r"$R^2$"+ "= {:.3f}".format(scores[f"{target_column}_r2"]), color=c)
                 axes[i - 1].legend(handles=[rmse_patch, mae_patch, r2_score])
+
 
     return fig, axes
 
@@ -101,13 +103,15 @@ def absolute_error_composition(df: pd.DataFrame):
     fig, axes = plt.subplots(1,2, figsize=(10,5))
     fig.subplots_adjust(wspace=0.2)
     big_df_errors = df.dropna().copy().reset_index()
+    axis_fontsize = 16
     for i in [1,2]:
         abs_difference = (df.dropna()[f"ln_gamma_{i}"]-df.dropna()[f"ln_gamma_{i}_pred"]).abs()
         big_df_errors[f"abs_error_{i}"]= abs_difference.to_numpy()
         axes[i-1].scatter(df.dropna()["x(1)"], abs_difference, alpha=0.1, c = "#025b66")
-        axes[i-1].set_xlabel("x(1)")
-        axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$")
+        axes[i-1].set_xlabel("x", fontsize=axis_fontsize)
+        axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$", fontsize=axis_fontsize)
         axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
+        axes[i-1].tick_params(direction="in", which="both", labelsize=12)
     return fig, axes
 
 
