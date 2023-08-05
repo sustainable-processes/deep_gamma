@@ -32,9 +32,6 @@ python deep_gamma/ops/polynomial.py fit data/02_intermediate/cosmo_data.pq data/
 python deep_gamma/ops/polynomial.py split data/03_primary/polynomial data/05_model_input/cosmo data/05_model_input/cosmo
 ```
 
-Todo:
-* Use modes or something like that to distinguish between different datasets - will do maybe
-
 # Machine Learning 
 
 ## Local python 
