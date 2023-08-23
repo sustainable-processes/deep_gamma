@@ -4,6 +4,7 @@ from chemprop.train import make_predictions
 from chemprop.args import PredictArgs
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import seaborn as sns
 import pandas as pd
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
@@ -112,6 +113,38 @@ def absolute_error_composition(df: pd.DataFrame):
         axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$", fontsize=axis_fontsize)
         axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
         axes[i-1].tick_params(direction="in", which="both", labelsize=12)
+    return fig, axes
+
+
+def absolute_error_temperature(df: pd.DataFrame):
+    fig, axes = plt.subplots(1,2, figsize=(10,5))
+    fig.subplots_adjust(wspace=0.2)
+    big_df_errors = df.dropna().copy().reset_index()
+    axis_fontsize = 16
+    for i in [1,2]:
+        abs_difference = (df.dropna()[f"ln_gamma_{i}"]-df.dropna()[f"ln_gamma_{i}_pred"]).abs()
+        big_df_errors[f"abs_error_{i}"]= abs_difference.to_numpy()
+        axes[i-1].scatter(df.dropna()["temperature (K)"], abs_difference, alpha=0.1, c = "#025b66")
+        axes[i-1].set_xlabel("Temperature (K)", fontsize=axis_fontsize)
+        axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$", fontsize=axis_fontsize)
+        axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
+        axes[i-1].tick_params(direction="in", which="both", labelsize=12)
+    return fig, axes
+
+def absolute_error_temperature_histogram(df: pd.DataFrame):
+    fig, axes = plt.subplots(1,2, figsize=(10,5))
+    fig.subplots_adjust(wspace=0.2)
+    big_df_errors = df.dropna().copy().reset_index()
+    axis_fontsize = 16
+    for i in [1,2]:
+        abs_difference = (df.dropna()[f"ln_gamma_{i}"]-df.dropna()[f"ln_gamma_{i}_pred"]).abs()
+        big_df_errors[f"abs_error_{i}"]= abs_difference.to_numpy()
+        sns.histplot(data=big_df_errors, x="temperature (K)", y=f"abs_error_{i}", ax=axes[i-1])
+        # axes[i-1].scatter(df.dropna()["temperature (K)"], abs_difference, alpha=0.1, c = "#025b66")
+        # axes[i-1].set_xlabel("Temperature (K)", fontsize=axis_fontsize)
+        # axes[i-1].set_ylabel(f"Absolute Error $\ln\gamma_{i}$", fontsize=axis_fontsize)
+        # axes[i-1].set_title(f"$\ln\gamma_{i}$", fontsize=16)
+        # axes[i-1].tick_params(direction="in", which="both", labelsize=12)
     return fig, axes
 
 
@@ -269,6 +302,8 @@ def evaluate():
                 # Absolute error vs composition
                 fig, _ = absolute_error_composition(big_df)
                 fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_absolute_error_vs_composition.png", dpi=300)
+                fig, _ = absolute_error_temperature(big_df)
+                fig.savefig(args.reporting_dir / f"{model_name}_{predict_set}_absolute_error_vs_temperature.png", dpi=300)
     
     # Write out scores in publication format
     scores_df = pd.DataFrame(all_scores).round(4)

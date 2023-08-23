@@ -7,7 +7,6 @@ from typing import Optional, List
 from typing_extensions import Literal
 import os
 from pathlib import Path
-from subprocess import call
 
 class VLETrainArgs(TrainArgs):
     experiment_name: str = None
